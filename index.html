@@ -69,8 +69,8 @@
    LIFF_ID    : ได้จาก Step 3 (สร้าง LIFF app ใน LINE Developers)
    WEBHOOK_URL: ได้จาก Step 4 (n8n webhook ที่รับข้อมูลลงเวลา)            */
 const CONFIG = {
-  LIFF_ID: "2010363505-SKKkDoTf",   // ✅ ตั้งแล้ว (Step 3)
-  WEBHOOK_URL: ""                   // Step 4 (n8n webhook รับข้อมูลลงเวลา)
+  LIFF_ID: "2010363505-SKKkDoTf",                          // ✅ Step 3
+  WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/clockin"  // ✅ Step 4 (n8n)
 };
 
 let state = { userId: "", displayName: "", photo: "", lat: null, lng: null, acc: null };
