@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>แจ้งลา / ขออนุญาต — Ryujin</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; background:#f2f3f5;
+    color:#1a1a1a; padding:16px; max-width:460px; margin:0 auto; }
+  h1 { font-size:20px; text-align:center; margin:8px 0 4px; }
+  #who { text-align:center; font-size:15px; color:#555; margin-bottom:14px; min-height:20px; }
+  #who b { color:#c0392b; }
+  label { display:block; font-size:14px; font-weight:700; margin:14px 0 6px; }
+  .types { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .types button { padding:14px 8px; border:2px solid #ddd; border-radius:12px; background:#fff;
+    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; color:#444; }
+  .types button.sel { border-color:#c0392b; background:#fdecea; color:#c0392b; }
+  input, textarea, select { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px;
+    font-size:16px; font-family:inherit; background:#fff; }
+  textarea { min-height:70px; resize:vertical; }
+  .row { display:flex; gap:8px; }
+  .row > div { flex:1; }
+  #timeWrap { display:none; }
+  #submit { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
+    background:#c0392b; color:#fff; margin-top:18px; cursor:pointer; font-family:inherit; }
+  #submit:disabled { opacity:.45; }
+  #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
+  .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
+</style>
+</head>
+<body>
+  <h1>📝 แจ้งลา / ขออนุญาต</h1>
+  <div id="who">กำลังโหลด…</div>
+
+  <label>ชนิดคำขอ</label>
+  <div class="types" id="types">
+    <button data-t="ลาป่วย">🟠 ลาป่วย</button>
+    <button data-t="ลากิจ">🟡 ลากิจ</button>
+    <button data-t="ลาพักร้อน">🔵 ลาพักร้อน</button>
+    <button data-t="ขอเข้าสาย">⏰ ขอเข้าสาย</button>
+    <button data-t="ขอกลับก่อน">🏃 ขอกลับก่อน</button>
+  </div>
+
+  <div class="row">
+    <div><label>วันที่เริ่ม</label><input type="date" id="start"></div>
+    <div><label>ถึงวันที่</label><input type="date" id="end"></div>
+  </div>
+
+  <div id="timeWrap"><label id="timeLabel">เวลา</label><input type="time" id="time"></div>
+
+  <label>เหตุผล</label>
+  <textarea id="reason" placeholder="เช่น ไปหาหมอ / ธุระครอบครัว"></textarea>
+
+  <button id="submit" disabled>ส่งคำขอ (รออนุมัติ)</button>
+  <div id="status"></div>
+
+<script>
+/* ===== ตั้งค่า — เติมทีหลัง =====
+   LIFF_ID    : LIFF app ตัวที่ 2 (หน้าแจ้งลา)
+   WEBHOOK_URL: n8n webhook รับคำขอลา                     */
+const CONFIG = { LIFF_ID: "", WEBHOOK_URL: "" };
+
+const $ = id => document.getElementById(id);
+let state = { userId:"", displayName:"", type:"" };
+
+/* วันนี้เป็นค่าเริ่มต้น */
+const today = new Date().toISOString().slice(0,10);
+$("start").value = today; $("end").value = today;
+
+/* เลือกชนิด */
+document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#types button").forEach(x => x.classList.remove("sel"));
+  b.classList.add("sel"); state.type = b.dataset.t;
+  const isTime = (state.type === "ขอเข้าสาย" || state.type === "ขอกลับก่อน");
+  $("timeWrap").style.display = isTime ? "block" : "none";
+  $("timeLabel").textContent = state.type === "ขอเข้าสาย" ? "เวลาที่จะเข้า" : "เวลาที่จะกลับ";
+  if (isTime) $("end").value = $("start").value;   // เข้าสาย/กลับก่อน = วันเดียว
+  refresh();
+});
+["start","end","time","reason"].forEach(id => $(id).addEventListener("input", refresh));
+function refresh(){ $("submit").disabled = !(state.type && $("start").value); }
+
+/* LIFF */
+async function initWho(){
+  if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId="TEST"; return; }
+  try{
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    const p = await liff.getProfile();
+    state.userId=p.userId; state.displayName=p.displayName;
+    $("who").innerHTML="ผู้ขอ: <b>"+p.displayName+"</b>";
+  }catch(e){ $("who").innerHTML="🧪 โหมดทดสอบ (นอก LINE)"; state.userId="TEST"; }
+}
+
+/* ส่งคำขอ */
+$("submit").onclick = async () => {
+  $("submit").disabled = true;
+  $("status").innerHTML = '<span class="wait">⏳ กำลังส่ง…</span>';
+  const isTime = (state.type === "ขอเข้าสาย" || state.type === "ขอกลับก่อน");
+  const payload = {
+    userId: state.userId, displayName: state.displayName,
+    type: state.type,
+    startDate: $("start").value,
+    endDate: isTime ? $("start").value : ($("end").value || $("start").value),
+    time: isTime ? $("time").value : "",
+    reason: $("reason").value
+  };
+  if(!CONFIG.WEBHOOK_URL){
+    $("status").innerHTML='<span class="wait">🧪 โหมดทดสอบ: ยังไม่ตั้ง webhook (ดู console)</span>';
+    console.log("LEAVE PAYLOAD:", payload); return;
+  }
+  try{
+    const res = await fetch(CONFIG.WEBHOOK_URL,{ method:"POST",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    $("status").innerHTML='<span class="ok">✅ ส่งคำขอแล้ว! รอผู้จัดการอนุมัติ</span>';
+    if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
+  }catch(e){ $("status").innerHTML='<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่</span>'; refresh(); }
+};
+
+initWho();
+</script>
+</body>
+</html>
