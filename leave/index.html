@@ -53,6 +53,7 @@
   <label>เหตุผล</label>
   <textarea id="reason" placeholder="เช่น ไปหาหมอ / ธุระครอบครัว"></textarea>
 
+  <div id="warn" style="display:none;font-size:13px;color:#c0392b;background:#fdecea;padding:10px;border-radius:10px;margin-top:14px;line-height:1.4;"></div>
   <button id="submit" disabled>ส่งคำขอ (รออนุมัติ)</button>
   <div id="status"></div>
 
@@ -80,7 +81,19 @@ document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   refresh();
 });
 ["start","end","time","reason"].forEach(id => $(id).addEventListener("input", refresh));
-function refresh(){ $("submit").disabled = !(state.type && $("start").value); }
+function refresh(){
+  $("submit").disabled = !(state.type && $("start").value);
+  state.shortNotice = false; let msg = "";
+  if(state.type && $("start").value){
+    const t0 = new Date(); t0.setHours(0,0,0,0);
+    const s0 = new Date($("start").value + "T00:00:00");
+    const ahead = Math.round((s0 - t0)/86400000);
+    if(state.type === "ลากิจ" && ahead < 1){ state.shortNotice = true; msg = "⚠️ ลากิจควรแจ้งล่วงหน้าอย่างน้อย 1 วัน — ส่งได้ แต่จะถูกติดธงให้ผู้จัดการพิจารณา"; }
+    if(state.type === "ลาพักร้อน" && ahead < 15){ state.shortNotice = true; msg = "⚠️ ลาพักร้อนควรแจ้งล่วงหน้าอย่างน้อย 15 วัน — ส่งได้ แต่จะถูกติดธงให้ผู้จัดการพิจารณา"; }
+  }
+  $("warn").style.display = state.shortNotice ? "block" : "none";
+  $("warn").textContent = msg;
+}
 
 /* LIFF */
 async function initWho(){
@@ -105,7 +118,8 @@ $("submit").onclick = async () => {
     startDate: $("start").value,
     endDate: isTime ? $("start").value : ($("end").value || $("start").value),
     time: isTime ? $("time").value : "",
-    reason: $("reason").value
+    reason: $("reason").value,
+    shortNotice: !!state.shortNotice
   };
   if(!CONFIG.WEBHOOK_URL){
     $("status").innerHTML='<span class="wait">🧪 โหมดทดสอบ: ยังไม่ตั้ง webhook (ดู console)</span>';
