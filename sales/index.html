@@ -26,12 +26,28 @@
   #save:disabled { opacity:.45; }
   #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
   .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
+  .tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .tab { flex:1; padding:10px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:15px; font-weight:700; font-family:inherit; color:#888; cursor:pointer; }
+  .tab.on { border-color:#0a7c3f; background:#eafaf9; color:#0a7c3f; }
 </style>
 </head>
 <body>
-  <h1>💰 ส่งยอดขายวันนี้</h1>
+  <h1 id="title">💰 ส่งยอดขายวันนี้</h1>
   <div id="who">กำลังโหลด…</div>
 
+  <div class="tabs">
+    <button id="tabSales" class="tab on">💰 ยอดขาย</button>
+    <button id="tabBill" class="tab">🧾 บิล</button>
+  </div>
+
+  <div id="billTab" style="display:none;text-align:center;padding:24px 8px;">
+    <div style="font-size:48px">📸</div>
+    <p style="font-size:16px;font-weight:700;margin:8px 0">ส่งบิลค่าใช้จ่าย</p>
+    <p style="color:#555;line-height:1.5">ปิดหน้านี้ แล้ว<b>ถ่าย/ส่งรูปบิลในแชต</b>ได้เลย<br>ระบบจะอ่าน + บันทึกให้อัตโนมัติ</p>
+    <button id="closeBill" style="margin-top:14px;border:none;border-radius:12px;padding:14px 24px;background:#34495e;color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">ปิดหน้านี้ → ส่งรูปบิล</button>
+  </div>
+
+  <div id="salesTab">
   <label for="file" class="pick" id="pickLabel">📸 ถ่าย/เลือกรูปสรุปยอด POS</label>
   <input type="file" id="file" accept="image/*">
   <img id="preview" alt="preview">
@@ -49,6 +65,7 @@
     <button id="save" disabled>✅ ยืนยันบันทึกยอด</button>
   </div>
   <div id="status"></div>
+  </div>
 
 <script>
 /* ===== ตั้งค่า — เติม LIFF_ID ทีหลัง ===== */
@@ -62,6 +79,11 @@ const $ = id => document.getElementById(id);
 let state = { userId:"", displayName:"" };
 const today = new Date().toISOString().slice(0,10);
 $("date").value = today;
+
+/* แท็บ ยอดขาย / บิล */
+$("tabSales").onclick = () => { $("tabSales").classList.add("on"); $("tabBill").classList.remove("on"); $("salesTab").style.display="block"; $("billTab").style.display="none"; $("title").textContent="💰 ส่งยอดขายวันนี้"; };
+$("tabBill").onclick = () => { $("tabBill").classList.add("on"); $("tabSales").classList.remove("on"); $("salesTab").style.display="none"; $("billTab").style.display="block"; $("title").textContent="🧾 ส่งบิลค่าใช้จ่าย"; };
+$("closeBill").onclick = () => { if(window.liff && liff.isInClient && liff.isInClient()) liff.closeWindow(); };
 
 async function initWho(){
   if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId="TEST"; return; }
