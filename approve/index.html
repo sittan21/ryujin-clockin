@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>อนุมัติคำขอ — Ryujin</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body { margin:0; font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; background:#f2f3f5;
+    color:#1a1a1a; text-align:center; padding:60px 20px; }
+  #icon { font-size:64px; margin-bottom:8px; }
+  h1 { font-size:22px; margin:8px 0; }
+  p { color:#666; font-size:15px; }
+</style>
+</head>
+<body>
+  <div id="icon">⏳</div>
+  <h1 id="head">กำลังบันทึก…</h1>
+  <p id="sub">โปรดรอสักครู่</p>
+
+<script>
+/* ===== ตั้งค่า — เติม LIFF_ID ทีหลัง ===== */
+const CONFIG = { LIFF_ID: "", WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/request-approve" };
+
+const $ = id => document.getElementById(id);
+function show(icon, head, sub, color){ $("icon").textContent=icon; $("head").textContent=head; $("head").style.color=color||"#1a1a1a"; $("sub").textContent=sub||""; }
+
+function getParams(){
+  const p = new URLSearchParams(location.search);
+  let req = p.get("req"), decision = p.get("decision");
+  if((!req || !decision) && p.get("liff.state")){
+    const s = new URLSearchParams(p.get("liff.state").replace(/^\?/,""));
+    req = req || s.get("req"); decision = decision || s.get("decision");
+  }
+  return { req, decision };
+}
+
+async function run(){
+  const { req, decision } = getParams();
+  if(!req){ show("⚠️","ลิงก์ไม่ถูกต้อง","ไม่พบรหัสคำขอ","#c0392b"); return; }
+  let managerName = "";
+  try{
+    if(CONFIG.LIFF_ID){
+      await liff.init({ liffId: CONFIG.LIFF_ID });
+      if(!liff.isLoggedIn()){ liff.login(); return; }
+      const prof = await liff.getProfile(); managerName = prof.displayName || "";
+    }
+  }catch(e){ managerName = ""; }
+  try{
+    const res = await fetch(CONFIG.WEBHOOK_URL,{ method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ reqId: req, decision: decision || "approve", managerName: managerName }) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    if(data.already){ show("ℹ️","ดำเนินการไปแล้ว", data.message||"คำขอนี้ถูกดำเนินการแล้ว","#e67e22"); }
+    else if((decision||"approve")==="reject"){ show("❌","ไม่อนุมัติแล้ว","บันทึก + แจ้งพนักงานแล้ว","#c0392b"); }
+    else { show("✅","อนุมัติแล้ว","บันทึก + แจ้งพนักงานแล้ว","#27ae60"); }
+    if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),2000);
+  }catch(e){ show("❌","ไม่สำเร็จ","ลองกดใหม่อีกครั้ง","#c0392b"); }
+}
+run();
+</script>
+</body>
+</html>

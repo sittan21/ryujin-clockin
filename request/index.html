@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>แจ้งคำขอ — Ryujin</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; background:#f2f3f5;
+    color:#1a1a1a; padding:16px; max-width:460px; margin:0 auto; }
+  h1 { font-size:20px; text-align:center; margin:8px 0 4px; }
+  #who { text-align:center; font-size:15px; color:#555; margin-bottom:14px; min-height:20px; }
+  #who b { color:#7B5CFF; }
+  label { display:block; font-size:14px; font-weight:700; margin:14px 0 6px; }
+  .types { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .types button { padding:13px 6px; border:2px solid #ddd; border-radius:12px; background:#fff;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; color:#444; }
+  .types button.sel { border-color:#7B5CFF; background:#efeaff; color:#7B5CFF; }
+  input, textarea { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px;
+    font-size:16px; font-family:inherit; background:#fff; }
+  textarea { min-height:64px; resize:vertical; }
+  .row { display:flex; gap:8px; } .row > div { flex:1; }
+  .fld { display:none; }
+  #submit { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
+    background:#7B5CFF; color:#fff; margin-top:18px; cursor:pointer; font-family:inherit; }
+  #submit:disabled { opacity:.45; }
+  #warn { display:none; font-size:13px; color:#b8860b; background:#fbf3d9; padding:10px; border-radius:10px; margin-top:14px; line-height:1.4; }
+  #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
+  .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
+</style>
+</head>
+<body>
+  <h1>📨 แจ้งคำขอ</h1>
+  <div id="who">กำลังโหลด…</div>
+
+  <label>ประเภทคำขอ</label>
+  <div class="types" id="types">
+    <button data-t="ขอลาป่วย">🟠 ลาป่วย</button>
+    <button data-t="ขอลากิจ">🟡 ลากิจ</button>
+    <button data-t="ขอลาพักร้อน">🔵 ลาพักร้อน</button>
+    <button data-t="ขอสลับวันหยุด">🔄 สลับวันหยุด</button>
+    <button data-t="ขอเข้าสาย">⏰ ขอเข้าสาย</button>
+    <button data-t="ขอกลับก่อน">🏃 ขอกลับก่อน</button>
+  </div>
+
+  <div class="fld" id="fSwapOld"><label>วันหยุดเดิม (ที่จะสลับออก)</label><input type="date" id="swapOld"></div>
+
+  <div class="row">
+    <div><label id="lblFrom">วันที่</label><input type="date" id="dateFrom"></div>
+    <div class="fld" id="fTo" style="display:none"><label>ถึงวันที่</label><input type="date" id="dateTo"></div>
+  </div>
+
+  <div class="fld" id="fTime"><label id="lblTime">เวลา</label><input type="time" id="time"></div>
+
+  <label>เหตุผล</label>
+  <textarea id="reason" placeholder="เช่น ไปหาหมอ / ธุระครอบครัว / สลับกับเพื่อน"></textarea>
+
+  <div id="warn"></div>
+  <button id="submit" disabled>ส่งคำขอ (รออนุมัติ)</button>
+  <div id="status"></div>
+
+<script>
+/* ===== ตั้งค่า — เติมทีหลัง ===== */
+const CONFIG = { LIFF_ID: "", WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/request" };
+
+const $ = id => document.getElementById(id);
+let state = { userId:"", displayName:"", type:"" };
+const today = new Date().toISOString().slice(0,10);
+$("dateFrom").value = today; $("dateTo").value = today;
+
+const LEAVE = ["ขอลาป่วย","ขอลากิจ","ขอลาพักร้อน"];
+const TIMED = ["ขอเข้าสาย","ขอกลับก่อน"];
+
+document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#types button").forEach(x => x.classList.remove("sel"));
+  b.classList.add("sel"); state.type = b.dataset.t;
+  const isLeave = LEAVE.includes(state.type);
+  const isTimed = TIMED.includes(state.type);
+  const isSwap  = state.type === "ขอสลับวันหยุด";
+  $("fTo").style.display   = isLeave ? "block" : "none";
+  $("fTime").style.display = isTimed ? "block" : "none";
+  $("fSwapOld").style.display = isSwap ? "block" : "none";
+  $("lblFrom").textContent = isSwap ? "วันหยุดใหม่ (ที่จะหยุดแทน)" : (isTimed ? "วันที่" : "วันที่เริ่ม");
+  $("lblTime").textContent = state.type === "ขอเข้าสาย" ? "เวลาที่จะเข้า" : "เวลาที่จะกลับ";
+  refresh();
+});
+["dateFrom","dateTo","time","swapOld","reason"].forEach(id => $(id).addEventListener("input", refresh));
+
+function refresh(){
+  $("submit").disabled = !(state.type && $("dateFrom").value);
+  let msg = "";
+  if(state.type && $("dateFrom").value){
+    const t0 = new Date(); t0.setHours(0,0,0,0);
+    const s0 = new Date($("dateFrom").value + "T00:00:00");
+    const ahead = Math.round((s0 - t0)/86400000);
+    if(state.type === "ขอลากิจ" && ahead < 1){ msg = "⚠️ ลากิจควรแจ้งล่วงหน้าอย่างน้อย 1 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
+    if(state.type === "ขอลาพักร้อน" && ahead < 15){ msg = "⚠️ ลาพักร้อนควรแจ้งล่วงหน้าอย่างน้อย 15 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
+  }
+  $("warn").style.display = msg ? "block" : "none"; $("warn").textContent = msg;
+}
+
+async function initWho(){
+  if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId="TEST"; return; }
+  try{
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    const p = await liff.getProfile();
+    state.userId=p.userId; state.displayName=p.displayName;
+    $("who").innerHTML="ผู้ขอ: <b>"+p.displayName+"</b>";
+  }catch(e){ $("who").innerHTML="🧪 โหมดทดสอบ (นอก LINE)"; state.userId="TEST"; }
+}
+
+$("submit").onclick = async () => {
+  $("submit").disabled = true;
+  $("status").innerHTML = '<span class="wait">⏳ กำลังส่ง…</span>';
+  const isLeave = LEAVE.includes(state.type);
+  const isTimed = TIMED.includes(state.type);
+  const isSwap  = state.type === "ขอสลับวันหยุด";
+  const payload = {
+    userId: state.userId, displayName: state.displayName, type: state.type,
+    dateFrom: $("dateFrom").value,
+    dateTo: isLeave ? ($("dateTo").value || $("dateFrom").value) : "",
+    time: isTimed ? $("time").value : "",
+    swapOld: isSwap ? $("swapOld").value : "",
+    reason: $("reason").value,
+    clientTime: new Date().toISOString()
+  };
+  try{
+    const res = await fetch(CONFIG.WEBHOOK_URL,{ method:"POST",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    $("status").innerHTML='<span class="ok">✅ ส่งคำขอแล้ว! รอผู้จัดการอนุมัติ</span>';
+    if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
+  }catch(e){ $("status").innerHTML='<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่</span>'; refresh(); }
+};
+
+initWho();
+</script>
+</body>
+</html>
