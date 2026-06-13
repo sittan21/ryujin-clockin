@@ -39,11 +39,12 @@
   <div id="form">
     <div class="hint">⚠️ Gemini อ่านให้แล้ว — เช็ก/แก้ให้ถูก ก่อนยืนยัน</div>
     <label>วันที่</label><input type="date" id="date">
-    <label>ยอดขายรวม (บาท)</label><input type="number" id="total" inputmode="decimal">
+    <label>ยอดขายรวม (บาท) *</label><input type="number" id="total" inputmode="decimal">
     <div class="row">
-      <div><label>เงินสด</label><input type="number" id="cash" inputmode="decimal"></div>
-      <div><label>โอน/บัตร</label><input type="number" id="transfer" inputmode="decimal"></div>
+      <div><label>เงินสด *</label><input type="number" id="cash" inputmode="decimal"></div>
+      <div><label>โอน/บัตร *</label><input type="number" id="transfer" inputmode="decimal"></div>
     </div>
+    <div class="hint">* บังคับกรอก — เงินสด/โอน พิมพ์จากหน้าสรุป (หน้า 2)</div>
     <label>จำนวนบิล (ถ้ามี)</label><input type="number" id="bills" inputmode="numeric">
     <button id="save" disabled>✅ ยืนยันบันทึกยอด</button>
   </div>
@@ -104,7 +105,7 @@ $("file").addEventListener("change", e => {
 
 /* ยืนยันบันทึก */
 $("save").onclick = async () => {
-  if(!$("total").value){ $("status").innerHTML='<span class="bad">ใส่ยอดขายรวมก่อนนะ</span>'; return; }
+  if($("total").value==='' || $("cash").value==='' || $("transfer").value===''){ $("status").innerHTML='<span class="bad">⚠️ กรอก ยอดรวม + เงินสด + โอน ให้ครบทุกช่องก่อนนะ</span>'; return; }
   $("save").disabled = true;
   $("status").innerHTML = '<span class="wait">⏳ กำลังบันทึก…</span>';
   const payload = {
