@@ -166,8 +166,13 @@ async function submit(type) {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    $("status").innerHTML = '<span class="ok">✅ บันทึก' + (type==="in"?"เข้างาน":"เลิกงาน") + 'แล้ว!</span>';
-    if (CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(() => liff.closeWindow(), 1500);
+    const data = await res.json().catch(() => ({}));
+    if (data.duplicate) {
+      $("status").innerHTML = '<span class="wait">⚠️ ' + (data.message || 'คุณลงเวลาไปแล้ววันนี้') + '</span>';
+    } else {
+      $("status").innerHTML = '<span class="ok">✅ บันทึก' + (type==="in"?"เข้างาน":"เลิกงาน") + 'แล้ว!</span>';
+    }
+    if (CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(() => liff.closeWindow(), 1800);
   } catch (e) {
     $("status").innerHTML = '<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่</span>';
     refreshButtons();
