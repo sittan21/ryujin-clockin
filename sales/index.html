@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ส่งยอดขาย — Ryujin</title>
+<title>ส่งยอดขาย / ค่าใช้จ่าย — Ryujin</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -13,21 +13,21 @@
   #who { text-align:center; font-size:15px; color:#555; margin-bottom:14px; min-height:20px; }
   #who b { color:#0a7c3f; }
   label { display:block; font-size:14px; font-weight:700; margin:14px 0 6px; }
-  input { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px; font-size:16px; font-family:inherit; background:#fff; }
+  input, select { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px; font-size:16px; font-family:inherit; background:#fff; }
   .pick { display:block; width:100%; text-align:center; padding:16px; border:2px dashed #0a7c3f; border-radius:14px;
     background:#eafaf933; color:#0a7c3f; font-size:16px; font-weight:700; cursor:pointer; }
-  #file { display:none; }
-  #preview { width:100%; border-radius:12px; margin-top:10px; display:none; }
+  #file, #expFile { display:none; }
+  #preview, #expPreview { width:100%; border-radius:12px; margin-top:10px; display:none; }
   #form { display:none; }
   .row { display:flex; gap:8px; } .row > div { flex:1; }
   .hint { font-size:12px; color:#e67e22; text-align:center; margin-top:6px; }
-  #save { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
+  #save, #expSave { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
     background:#0a7c3f; color:#fff; margin-top:18px; cursor:pointer; }
-  #save:disabled { opacity:.45; }
-  #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
+  #save:disabled, #expSave:disabled { opacity:.45; }
+  #status, #expStatus { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
   .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
-  .tabs { display:flex; gap:8px; margin-bottom:14px; }
-  .tab { flex:1; padding:10px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:15px; font-weight:700; font-family:inherit; color:#888; cursor:pointer; }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .tab { flex:1; padding:10px 4px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:14px; font-weight:700; font-family:inherit; color:#888; cursor:pointer; }
   .tab.on { border-color:#0a7c3f; background:#eafaf9; color:#0a7c3f; }
 </style>
 </head>
@@ -38,12 +38,13 @@
   <div class="tabs">
     <button id="tabSales" class="tab on">💰 ยอดขาย</button>
     <button id="tabBill" class="tab">🧾 บิล</button>
+    <button id="tabExpense" class="tab">💸 ค่าใช้จ่าย</button>
   </div>
 
   <div id="billTab" style="display:none;text-align:center;padding:24px 8px;">
     <div style="font-size:48px">📸</div>
     <p style="font-size:16px;font-weight:700;margin:8px 0">ส่งบิลค่าใช้จ่าย</p>
-    <p style="color:#555;line-height:1.5">ปิดหน้านี้ แล้ว<b>ถ่าย/ส่งรูปบิลในแชต</b>ได้เลย<br>ระบบจะอ่าน + บันทึกให้อัตโนมัติ</p>
+    <p style="color:#555;line-height:1.5">บิลที่<b>มีรายการสินค้า</b> (แมคโคร/AD/Gen Y/ร้านมีใบ)<br>ปิดหน้านี้ แล้ว<b>ถ่าย/ส่งรูปบิลในแชต</b>ได้เลย<br>ระบบจะอ่าน + บันทึกให้อัตโนมัติ</p>
     <button id="closeBill" style="margin-top:14px;border:none;border-radius:12px;padding:14px 24px;background:#34495e;color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">ปิดหน้านี้ → ส่งรูปบิล</button>
   </div>
 
@@ -67,22 +68,57 @@
   <div id="status"></div>
   </div>
 
+  <div id="expenseTab" style="display:none;">
+  <p class="hint" style="color:#555">สลิป/ไม่มีบิล — ค่าส่งของ · โอนจ่ายตลาด · ค่าเน็ต · ของจุกจิก</p>
+  <label for="expFile" class="pick" id="expPickLabel">📸 แนบสลิป (มีก็ได้ — ไม่มีพิมพ์ยอดเอง)</label>
+  <input type="file" id="expFile" accept="image/*">
+  <img id="expPreview" alt="preview">
+
+  <label>ยอดเงิน (บาท) *</label><input type="number" id="expAmount" inputmode="decimal">
+  <label>หมวด *</label>
+  <select id="expCategory">
+    <option value="ค่าขนส่ง">ค่าขนส่ง</option>
+    <option value="วัตถุดิบ (โอน/สด)">วัตถุดิบ (โอน/สด)</option>
+    <option value="ค่าเน็ต/สาธารณูปโภค">ค่าเน็ต/สาธารณูปโภค</option>
+    <option value="ของใช้สิ้นเปลือง">ของใช้สิ้นเปลือง</option>
+    <option value="ซ่อมบำรุง">ซ่อมบำรุง</option>
+    <option value="เบ็ดเตล็ด">เบ็ดเตล็ด</option>
+  </select>
+  <label>รายละเอียด *</label><input type="text" id="expNote" placeholder="เช่น ค่าส่งของจากตลาด / จ่ายร้านผัก">
+  <label>วันที่</label><input type="date" id="expDate">
+  <button id="expSave" disabled>✅ บันทึกค่าใช้จ่าย</button>
+  <div id="expStatus"></div>
+  </div>
+
 <script>
-/* ===== ตั้งค่า — เติม LIFF_ID ทีหลัง ===== */
+/* ===== ตั้งค่า ===== */
 const CONFIG = {
   LIFF_ID: "2010363505-3dTzyK1V",
   READ_URL: "https://sittan.app.n8n.cloud/webhook/sales-read",
-  SAVE_URL: "https://sittan.app.n8n.cloud/webhook/sales-save"
+  SAVE_URL: "https://sittan.app.n8n.cloud/webhook/sales-save",
+  EXP_READ_URL: "https://sittan.app.n8n.cloud/webhook/expense-read",
+  EXP_SAVE_URL: "https://sittan.app.n8n.cloud/webhook/expense-save"
 };
 
 const $ = id => document.getElementById(id);
-let state = { userId:"", displayName:"" };
+let state = { userId:"", displayName:"", expImageUrl:"" };
 const today = new Date().toISOString().slice(0,10);
 $("date").value = today;
+$("expDate").value = today;
 
-/* แท็บ ยอดขาย / บิล */
-$("tabSales").onclick = () => { $("tabSales").classList.add("on"); $("tabBill").classList.remove("on"); $("salesTab").style.display="block"; $("billTab").style.display="none"; $("title").textContent="💰 ส่งยอดขายวันนี้"; };
-$("tabBill").onclick = () => { $("tabBill").classList.add("on"); $("tabSales").classList.remove("on"); $("salesTab").style.display="none"; $("billTab").style.display="block"; $("title").textContent="🧾 ส่งบิลค่าใช้จ่าย"; };
+/* แท็บ ยอดขาย / บิล / ค่าใช้จ่าย */
+function showTab(which){
+  $("salesTab").style.display   = which==='sales'   ? "block" : "none";
+  $("billTab").style.display    = which==='bill'    ? "block" : "none";
+  $("expenseTab").style.display = which==='expense' ? "block" : "none";
+  $("tabSales").classList.toggle("on", which==='sales');
+  $("tabBill").classList.toggle("on", which==='bill');
+  $("tabExpense").classList.toggle("on", which==='expense');
+  $("title").textContent = which==='sales' ? "💰 ส่งยอดขายวันนี้" : (which==='bill' ? "🧾 ส่งบิลค่าใช้จ่าย" : "💸 ค่าใช้จ่าย (สลิป/ไม่มีบิล)");
+}
+$("tabSales").onclick = () => showTab('sales');
+$("tabBill").onclick = () => showTab('bill');
+$("tabExpense").onclick = () => showTab('expense');
 $("closeBill").onclick = () => { if(window.liff && liff.isInClient && liff.isInClient()) liff.closeWindow(); };
 
 async function initWho(){
@@ -96,7 +132,7 @@ async function initWho(){
   }catch(e){ $("who").innerHTML="🧪 โหมดทดสอบ (นอก LINE)"; state.userId="TEST"; }
 }
 
-/* เลือกรูป → อ่านด้วย Gemini */
+/* ===== ยอดขาย ===== */
 $("file").addEventListener("change", e => {
   const f = e.target.files[0]; if(!f) return;
   const reader = new FileReader();
@@ -125,7 +161,6 @@ $("file").addEventListener("change", e => {
   reader.readAsDataURL(f);
 });
 
-/* ยืนยันบันทึก */
 $("save").onclick = async () => {
   if($("total").value==='' || $("cash").value==='' || $("transfer").value===''){ $("status").innerHTML='<span class="bad">⚠️ กรอก ยอดรวม + เงินสด + โอน ให้ครบทุกช่องก่อนนะ</span>'; return; }
   $("save").disabled = true;
@@ -141,6 +176,53 @@ $("save").onclick = async () => {
     $("status").innerHTML = '<span class="ok">✅ บันทึกยอดขายแล้ว! ขอบคุณครับ</span>';
     if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
   }catch(e){ $("status").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("save").disabled=false; }
+};
+
+/* ===== ค่าใช้จ่าย (สลิป/ไม่มีบิล) ===== */
+function expCheck(){ $("expSave").disabled = ($("expAmount").value==='' || $("expNote").value.trim()===''); }
+$("expAmount").addEventListener("input", expCheck);
+$("expNote").addEventListener("input", expCheck);
+
+$("expFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = reader.result;
+    $("expPreview").src = dataUrl; $("expPreview").style.display = "block";
+    $("expStatus").innerHTML = '<span class="wait">⏳ Gemini กำลังอ่านยอดจากสลิป…</span>';
+    try{
+      const res = await fetch(CONFIG.EXP_READ_URL, { method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ userId: state.userId, photo: dataUrl }) });
+      const d = await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      if(d.amount!=null) $("expAmount").value = d.amount;
+      if(d.date) $("expDate").value = d.date;
+      if(d.imageUrl) state.expImageUrl = d.imageUrl;
+      expCheck();
+      $("expStatus").innerHTML = '<span class="ok">✅ อ่านยอดแล้ว — เช็กให้ถูก + เลือกหมวด + ใส่รายละเอียด</span>';
+    }catch(err){
+      $("expStatus").innerHTML = '<span class="bad">⚠️ อ่านสลิปไม่สำเร็จ — พิมพ์ยอดเองได้เลย</span>';
+    }
+  };
+  reader.readAsDataURL(f);
+});
+
+$("expSave").onclick = async () => {
+  if($("expAmount").value==='' || $("expNote").value.trim()===''){ $("expStatus").innerHTML='<span class="bad">⚠️ ใส่ยอดเงิน + รายละเอียด ก่อนนะ</span>'; return; }
+  $("expSave").disabled = true;
+  $("expStatus").innerHTML = '<span class="wait">⏳ กำลังบันทึก…</span>';
+  const payload = {
+    userId: state.userId, amount: $("expAmount").value, category: $("expCategory").value,
+    note: $("expNote").value.trim(), date: $("expDate").value, imageUrl: state.expImageUrl || ""
+  };
+  try{
+    const res = await fetch(CONFIG.EXP_SAVE_URL, { method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    $("expStatus").innerHTML = '<span class="ok">✅ บันทึกค่าใช้จ่ายแล้ว! ขอบคุณครับ</span>';
+    if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
+  }catch(e){ $("expStatus").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("expSave").disabled=false; }
 };
 
 initWho();
