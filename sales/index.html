@@ -207,14 +207,15 @@ function stitch(urls){
     urls.forEach(function(u,idx){ const im=new Image(); im.onload=function(){imgs[idx]=im;loaded++;if(loaded===urls.length)done();}; im.onerror=function(){imgs[idx]=null;loaded++;if(loaded===urls.length)done();}; im.src=u; });
     function done(){
       const valid=imgs.filter(Boolean);
-      if(valid.length<=1){ resolve(urls[0]); return; }
-      const W=Math.min(1400, Math.max.apply(null, valid.map(function(i){return i.width;})));
-      const parts=valid.map(function(i){ return {i:i, h:Math.round(i.height*(W/i.width))}; });
+      if(!valid.length){ resolve(urls[0]); return; }
+      const W=(valid.length===1)?1200:1000;
+      const parts=valid.map(function(i){ var w=Math.min(W,i.width); return {i:i, w:w, h:Math.round(i.height*(w/i.width))}; });
+      const cw=Math.max.apply(null, parts.map(function(p){return p.w;}));
       const totalH=parts.reduce(function(a,p){return a+p.h;},0);
-      const c=document.createElement("canvas"); c.width=W; c.height=totalH;
-      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,totalH);
-      let y=0; parts.forEach(function(p){ ctx.drawImage(p.i,0,y,W,p.h); y+=p.h; });
-      resolve(c.toDataURL("image/jpeg",0.85));
+      const c=document.createElement("canvas"); c.width=cw; c.height=totalH;
+      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cw,totalH);
+      let y=0; parts.forEach(function(p){ ctx.drawImage(p.i,0,y,p.w,p.h); y+=p.h; });
+      resolve(c.toDataURL("image/jpeg",0.72));
     }
   });
 }
