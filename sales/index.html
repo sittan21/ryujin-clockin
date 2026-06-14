@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ส่งยอดขาย / ค่าใช้จ่าย — Ryujin</title>
+<title>ส่งยอดขาย / บิล / ค่าใช้จ่าย — Ryujin</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -16,15 +16,15 @@
   input, select { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px; font-size:16px; font-family:inherit; background:#fff; }
   .pick { display:block; width:100%; text-align:center; padding:16px; border:2px dashed #0a7c3f; border-radius:14px;
     background:#eafaf933; color:#0a7c3f; font-size:16px; font-weight:700; cursor:pointer; }
-  #file, #expFile { display:none; }
-  #preview, #expPreview { width:100%; border-radius:12px; margin-top:10px; display:none; }
-  #form { display:none; }
+  #file, #expFile, #billFile { display:none; }
+  #preview, #expPreview, #billPreview { width:100%; border-radius:12px; margin-top:10px; display:none; }
+  #form, #billForm { display:none; }
   .row { display:flex; gap:8px; } .row > div { flex:1; }
   .hint { font-size:12px; color:#e67e22; text-align:center; margin-top:6px; }
-  #save, #expSave { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
+  #save, #expSave, #billSave { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
     background:#0a7c3f; color:#fff; margin-top:18px; cursor:pointer; }
-  #save:disabled, #expSave:disabled { opacity:.45; }
-  #status, #expStatus { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
+  #save:disabled, #expSave:disabled, #billSave:disabled { opacity:.45; }
+  #status, #expStatus, #billStatus { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
   .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
   .tabs { display:flex; gap:6px; margin-bottom:14px; }
   .tab { flex:1; padding:10px 4px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:14px; font-weight:700; font-family:inherit; color:#888; cursor:pointer; }
@@ -41,11 +41,30 @@
     <button id="tabExpense" class="tab">💸 ค่าใช้จ่าย</button>
   </div>
 
-  <div id="billTab" style="display:none;text-align:center;padding:24px 8px;">
-    <div style="font-size:48px">📸</div>
-    <p style="font-size:16px;font-weight:700;margin:8px 0">ส่งบิลค่าใช้จ่าย</p>
-    <p style="color:#555;line-height:1.5">บิลที่<b>มีรายการสินค้า</b> (แมคโคร/AD/Gen Y/ร้านมีใบ)<br>ปิดหน้านี้ แล้ว<b>ถ่าย/ส่งรูปบิลในแชต</b>ได้เลย<br>ระบบจะอ่าน + บันทึกให้อัตโนมัติ</p>
-    <button id="closeBill" style="margin-top:14px;border:none;border-radius:12px;padding:14px 24px;background:#34495e;color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">ปิดหน้านี้ → ส่งรูปบิล</button>
+  <div id="billTab" style="display:none;">
+  <p class="hint" style="color:#555">บิลมีรายการสินค้า (แมคโคร/AD/Gen Y/ร้านมีใบ) — ถ่าย/เลือกรูป → ระบบอ่าน → เช็ก → ยืนยัน<br><span style="color:#999">หรือส่งรูปบิลในแชตก็ได้ (เร็วกว่า ไม่มีหน้ายืนยัน)</span></p>
+  <label for="billFile" class="pick" id="billPickLabel">📸 ถ่าย/เลือกรูปบิล</label>
+  <input type="file" id="billFile" accept="image/*">
+  <img id="billPreview" alt="preview">
+  <div id="billForm">
+    <div class="hint">⚠️ Gemini อ่านให้แล้ว — เช็ก/แก้ก่อนยืนยัน</div>
+    <label>ร้าน</label><input type="text" id="billVendor">
+    <label>วันที่</label><input type="date" id="billDate">
+    <label>ยอดสุทธิ (บาท) *</label><input type="number" id="billTotal" inputmode="decimal">
+    <label>สาขา *</label>
+    <select id="billBranch">
+      <option value="">🔎 อัตโนมัติ (ตามบิล/ผู้ส่ง)</option>
+      <option value="rec4JiNK0tDTpvg6C">อุดร</option>
+      <option value="rec7j7YaWFukwSVOd">ซูชิ หาดใหญ่</option>
+      <option value="recEvYE8fskom95mB">มัทฉะ หาดใหญ่</option>
+      <option value="recisEdhKVhjnAGpm">ภูเก็ต</option>
+      <option value="recGwgDtPyRUJamGF">พัทยา</option>
+      <option value="recSCd1Lj4Mbh6zXK">สำนักงานใหญ่ (HQ)</option>
+    </select>
+    <div class="hint" id="billItemsInfo" style="color:#555"></div>
+    <button id="billSave" disabled>✅ ยืนยันบันทึกบิล</button>
+  </div>
+  <div id="billStatus"></div>
   </div>
 
   <div id="salesTab">
@@ -97,16 +116,17 @@ const CONFIG = {
   READ_URL: "https://sittan.app.n8n.cloud/webhook/sales-read",
   SAVE_URL: "https://sittan.app.n8n.cloud/webhook/sales-save",
   EXP_READ_URL: "https://sittan.app.n8n.cloud/webhook/expense-read",
-  EXP_SAVE_URL: "https://sittan.app.n8n.cloud/webhook/expense-save"
+  EXP_SAVE_URL: "https://sittan.app.n8n.cloud/webhook/expense-save",
+  BILL_READ_URL: "https://sittan.app.n8n.cloud/webhook/bill-read",
+  BILL_SAVE_URL: "https://sittan.app.n8n.cloud/webhook/bill-save"
 };
 
 const $ = id => document.getElementById(id);
-let state = { userId:"", displayName:"", expImageUrl:"" };
+let state = { userId:"", displayName:"", expImageUrl:"", bill:null };
 const today = new Date().toISOString().slice(0,10);
 $("date").value = today;
 $("expDate").value = today;
 
-/* แท็บ ยอดขาย / บิล / ค่าใช้จ่าย */
 function showTab(which){
   $("salesTab").style.display   = which==='sales'   ? "block" : "none";
   $("billTab").style.display    = which==='bill'    ? "block" : "none";
@@ -114,12 +134,11 @@ function showTab(which){
   $("tabSales").classList.toggle("on", which==='sales');
   $("tabBill").classList.toggle("on", which==='bill');
   $("tabExpense").classList.toggle("on", which==='expense');
-  $("title").textContent = which==='sales' ? "💰 ส่งยอดขายวันนี้" : (which==='bill' ? "🧾 ส่งบิลค่าใช้จ่าย" : "💸 ค่าใช้จ่าย (สลิป/ไม่มีบิล)");
+  $("title").textContent = which==='sales' ? "💰 ส่งยอดขายวันนี้" : (which==='bill' ? "🧾 ส่งบิล (มีรายการ)" : "💸 ค่าใช้จ่าย (สลิป/ไม่มีบิล)");
 }
 $("tabSales").onclick = () => showTab('sales');
 $("tabBill").onclick = () => showTab('bill');
 $("tabExpense").onclick = () => showTab('expense');
-$("closeBill").onclick = () => { if(window.liff && liff.isInClient && liff.isInClient()) liff.closeWindow(); };
 
 async function initWho(){
   if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId="TEST"; return; }
@@ -176,6 +195,60 @@ $("save").onclick = async () => {
     $("status").innerHTML = '<span class="ok">✅ บันทึกยอดขายแล้ว! ขอบคุณครับ</span>';
     if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
   }catch(e){ $("status").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("save").disabled=false; }
+};
+
+/* ===== บิล (เลือกรูป → อ่าน → ยืนยัน) ===== */
+$("billFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = reader.result;
+    $("billPreview").src = dataUrl; $("billPreview").style.display = "block";
+    $("billStatus").innerHTML = '<span class="wait">⏳ Gemini กำลังอ่านบิล…</span>';
+    try{
+      const res = await fetch(CONFIG.BILL_READ_URL, { method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ userId: state.userId, photo: dataUrl }) });
+      const d = await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      if(d.is_receipt === false){
+        $("billForm").style.display = "none";
+        $("billStatus").innerHTML = '<span class="bad">⚠️ ไม่ใช่บิล ('+(d.reason||'-')+') — ถ้าเป็นสลิป ใช้แท็บ "ค่าใช้จ่าย"</span>';
+        return;
+      }
+      state.bill = d;
+      $("billVendor").value = d.vendor || "";
+      $("billDate").value = d.date || today;
+      $("billTotal").value = (d.total!=null ? d.total : "");
+      $("billBranch").value = d.branchId || "";
+      $("billItemsInfo").textContent = "📦 พบ " + (d.itemCount||0) + " รายการ" + (d.needs_review ? " · ⚠️ ตัวเลขอาจไม่ชัด เช็กดีๆ" : "");
+      $("billForm").style.display = "block"; $("billSave").disabled = false;
+      $("billStatus").innerHTML = '<span class="ok">✅ อ่านแล้ว — เช็ก ยอด/สาขา ให้ถูก แล้วกดยืนยัน</span>';
+    }catch(err){
+      $("billStatus").innerHTML = '<span class="bad">❌ อ่านบิลไม่สำเร็จ ลองใหม่ หรือส่งรูปในแชต</span>';
+    }
+  };
+  reader.readAsDataURL(f);
+});
+
+$("billSave").onclick = async () => {
+  if(!state.bill || $("billTotal").value===''){ $("billStatus").innerHTML='<span class="bad">⚠️ ต้องมียอดสุทธิก่อนนะ</span>'; return; }
+  $("billSave").disabled = true;
+  $("billStatus").innerHTML = '<span class="wait">⏳ กำลังบันทึก…</span>';
+  const b = state.bill;
+  const payload = {
+    userId: state.userId, vendor: $("billVendor").value, date: $("billDate").value,
+    subtotal: b.subtotal, vat: b.vat, total: $("billTotal").value,
+    items: b.items || [], branchId: $("billBranch").value, shipTo: b.shipTo || "",
+    imageUrl: b.imageUrl || "", docType: "ใบเสร็จ", needsReview: !!b.needs_review
+  };
+  try{
+    const res = await fetch(CONFIG.BILL_SAVE_URL, { method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    $("billStatus").innerHTML = '<span class="ok">✅ บันทึกบิลแล้ว! ขอบคุณครับ</span>';
+    if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
+  }catch(e){ $("billStatus").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("billSave").disabled=false; }
 };
 
 /* ===== ค่าใช้จ่าย (สลิป/ไม่มีบิล) ===== */
