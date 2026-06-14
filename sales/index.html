@@ -17,7 +17,7 @@
   .pick { display:block; width:100%; text-align:center; padding:16px; border:2px dashed #0a7c3f; border-radius:14px;
     background:#eafaf933; color:#0a7c3f; font-size:16px; font-weight:700; cursor:pointer; }
   #file, #expFile, #billFile { display:none; }
-  #preview, #expPreview, #billPreview { width:100%; border-radius:12px; margin-top:10px; display:none; }
+  #preview, #expPreview { width:100%; border-radius:12px; margin-top:10px; display:none; }
   #form, #billForm { display:none; }
   .row { display:flex; gap:8px; } .row > div { flex:1; }
   .hint { font-size:12px; color:#e67e22; text-align:center; margin-top:6px; }
@@ -42,12 +42,14 @@
   </div>
 
   <div id="billTab" style="display:none;">
-  <p class="hint" style="color:#555">บิลมีรายการสินค้า (แมคโคร/AD/Gen Y/ร้านมีใบ) — ถ่าย/เลือกรูป → ระบบอ่าน → เช็ก → ยืนยัน<br><span style="color:#999">หรือส่งรูปบิลในแชตก็ได้ (เร็วกว่า ไม่มีหน้ายืนยัน)</span></p>
-  <label for="billFile" class="pick" id="billPickLabel">📸 ถ่าย/เลือกรูปบิล</label>
-  <input type="file" id="billFile" accept="image/*">
-  <img id="billPreview" alt="preview">
+  <p class="hint" style="color:#555">บิลมีรายการสินค้า — ถ่าย/เลือกรูป (เพิ่มได้หลายหน้า) → อ่าน → เช็ก → ยืนยัน<br><span style="color:#999">หรือส่งรูปบิลในแชตก็ได้ (เร็วกว่า ไม่มีหน้ายืนยัน)</span></p>
+  <label for="billFile" class="pick">📸 เพิ่มหน้าบิล (เลือกได้หลายรูป)</label>
+  <input type="file" id="billFile" accept="image/*" multiple>
+  <div id="billThumbs" style="display:flex;flex-wrap:wrap;margin-top:8px;"></div>
+  <div id="billPagesInfo" class="hint" style="color:#0a7c3f;"></div>
+  <button id="billReadBtn" style="display:none;width:100%;border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:700;background:#1565c0;color:#fff;margin-top:10px;cursor:pointer;">🔍 อ่านบิล</button>
   <div id="billForm">
-    <div class="hint">⚠️ Gemini อ่านให้แล้ว — เช็ก/แก้ก่อนยืนยัน</div>
+    <div class="hint">⚠️ Gemini อ่านให้แล้ว (ยอดสุทธิหลังหักส่วนลด) — เช็ก/แก้ก่อนยืนยัน</div>
     <label>ร้าน</label><input type="text" id="billVendor">
     <label>วันที่</label><input type="date" id="billDate">
     <label>ยอดสุทธิ (บาท) *</label><input type="number" id="billTotal" inputmode="decimal">
@@ -122,7 +124,7 @@ const CONFIG = {
 };
 
 const $ = id => document.getElementById(id);
-let state = { userId:"", displayName:"", expImageUrl:"", bill:null };
+let state = { userId:"", displayName:"", expImageUrl:"", bill:null, billPages:[] };
 const today = new Date().toISOString().slice(0,10);
 $("date").value = today;
 $("expDate").value = today;
@@ -197,39 +199,68 @@ $("save").onclick = async () => {
   }catch(e){ $("status").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("save").disabled=false; }
 };
 
-/* ===== บิล (เลือกรูป → อ่าน → ยืนยัน) ===== */
-$("billFile").addEventListener("change", e => {
-  const f = e.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const dataUrl = reader.result;
-    $("billPreview").src = dataUrl; $("billPreview").style.display = "block";
-    $("billStatus").innerHTML = '<span class="wait">⏳ Gemini กำลังอ่านบิล…</span>';
-    try{
-      const res = await fetch(CONFIG.BILL_READ_URL, { method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ userId: state.userId, photo: dataUrl }) });
-      const d = await res.json().catch(()=>({}));
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      if(d.is_receipt === false){
-        $("billForm").style.display = "none";
-        $("billStatus").innerHTML = '<span class="bad">⚠️ ไม่ใช่บิล ('+(d.reason||'-')+') — ถ้าเป็นสลิป ใช้แท็บ "ค่าใช้จ่าย"</span>';
-        return;
-      }
-      state.bill = d;
-      $("billVendor").value = d.vendor || "";
-      $("billDate").value = d.date || today;
-      $("billTotal").value = (d.total!=null ? d.total : "");
-      $("billBranch").value = d.branchId || "";
-      $("billItemsInfo").textContent = "📦 พบ " + (d.itemCount||0) + " รายการ" + (d.needs_review ? " · ⚠️ ตัวเลขอาจไม่ชัด เช็กดีๆ" : "");
-      $("billForm").style.display = "block"; $("billSave").disabled = false;
-      $("billStatus").innerHTML = '<span class="ok">✅ อ่านแล้ว — เช็ก ยอด/สาขา ให้ถูก แล้วกดยืนยัน</span>';
-    }catch(err){
-      $("billStatus").innerHTML = '<span class="bad">❌ อ่านบิลไม่สำเร็จ ลองใหม่ หรือส่งรูปในแชต</span>';
+/* ===== บิล (หลายหน้า → ต่อรูป → อ่าน → ยืนยัน) ===== */
+function stitch(urls){
+  return new Promise(function(resolve){
+    if(!urls.length){ resolve(""); return; }
+    const imgs=[]; let loaded=0;
+    urls.forEach(function(u,idx){ const im=new Image(); im.onload=function(){imgs[idx]=im;loaded++;if(loaded===urls.length)done();}; im.onerror=function(){imgs[idx]=null;loaded++;if(loaded===urls.length)done();}; im.src=u; });
+    function done(){
+      const valid=imgs.filter(Boolean);
+      if(valid.length<=1){ resolve(urls[0]); return; }
+      const W=Math.min(1400, Math.max.apply(null, valid.map(function(i){return i.width;})));
+      const parts=valid.map(function(i){ return {i:i, h:Math.round(i.height*(W/i.width))}; });
+      const totalH=parts.reduce(function(a,p){return a+p.h;},0);
+      const c=document.createElement("canvas"); c.width=W; c.height=totalH;
+      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,totalH);
+      let y=0; parts.forEach(function(p){ ctx.drawImage(p.i,0,y,W,p.h); y+=p.h; });
+      resolve(c.toDataURL("image/jpeg",0.85));
     }
-  };
-  reader.readAsDataURL(f);
+  });
+}
+function renderBillPages(){
+  const n=state.billPages.length;
+  $("billPagesInfo").textContent = n ? ("📄 หน้าบิล: "+n+" หน้า (กดอ่านได้เลย)") : "";
+  $("billReadBtn").style.display = n ? "block" : "none";
+  $("billReadBtn").textContent = "🔍 อ่านบิล ("+n+" หน้า)";
+  const t=$("billThumbs"); t.innerHTML="";
+  state.billPages.forEach(function(u){ const im=document.createElement("img"); im.src=u; im.style.cssText="width:50px;height:50px;object-fit:cover;border-radius:6px;margin:3px;border:1px solid #ccc;"; t.appendChild(im); });
+}
+$("billFile").addEventListener("change", e => {
+  const files = Array.from(e.target.files||[]); if(!files.length) return;
+  files.forEach(function(f){ const r=new FileReader(); r.onload=function(){ state.billPages.push(r.result); renderBillPages(); }; r.readAsDataURL(f); });
+  e.target.value="";
 });
+$("billReadBtn").onclick = async () => {
+  if(!state.billPages.length) return;
+  $("billReadBtn").disabled = true;
+  $("billStatus").innerHTML = '<span class="wait">⏳ ต่อรูป + Gemini กำลังอ่านบิล…</span>';
+  try{
+    const photo = await stitch(state.billPages);
+    const res = await fetch(CONFIG.BILL_READ_URL, { method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ userId: state.userId, photo: photo }) });
+    const d = await res.json().catch(()=>({}));
+    $("billReadBtn").disabled = false;
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    if(d.is_receipt === false){
+      $("billForm").style.display = "none";
+      $("billStatus").innerHTML = '<span class="bad">⚠️ ไม่ใช่บิล ('+(d.reason||'-')+') — ถ้าเป็นสลิป ใช้แท็บ "ค่าใช้จ่าย"</span>';
+      return;
+    }
+    state.bill = d;
+    $("billVendor").value = d.vendor || "";
+    $("billDate").value = d.date || today;
+    $("billTotal").value = (d.total!=null ? d.total : "");
+    $("billBranch").value = d.branchId || "";
+    $("billItemsInfo").textContent = "📦 พบ " + (d.itemCount||0) + " รายการ" + (d.needs_review ? " · ⚠️ ตัวเลขอาจไม่ชัด/ยอดไม่ตรง เช็กดีๆ" : "");
+    $("billForm").style.display = "block"; $("billSave").disabled = false;
+    $("billStatus").innerHTML = '<span class="ok">✅ อ่านแล้ว — เช็ก ยอด/สาขา ให้ถูก แล้วกดยืนยัน</span>';
+  }catch(err){
+    $("billReadBtn").disabled = false;
+    $("billStatus").innerHTML = '<span class="bad">❌ อ่านบิลไม่สำเร็จ ลองใหม่ หรือส่งรูปในแชต</span>';
+  }
+};
 
 $("billSave").onclick = async () => {
   if(!state.bill || $("billTotal").value===''){ $("billStatus").innerHTML='<span class="bad">⚠️ ต้องมียอดสุทธิก่อนนะ</span>'; return; }
@@ -247,6 +278,7 @@ $("billSave").onclick = async () => {
       headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     if(!res.ok) throw new Error("HTTP "+res.status);
     $("billStatus").innerHTML = '<span class="ok">✅ บันทึกบิลแล้ว! ขอบคุณครับ</span>';
+    state.billPages = [];
     if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
   }catch(e){ $("billStatus").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("billSave").disabled=false; }
 };
