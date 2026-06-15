@@ -21,6 +21,8 @@
   #send { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
     background:#c0392b; color:#fff; margin-top:18px; cursor:pointer; }
   #send:disabled { opacity:.45; }
+  #edit { width:100%; border:2px solid #c0392b; border-radius:14px; padding:13px; font-size:15px; font-weight:700;
+    background:#fff; color:#c0392b; margin-top:10px; cursor:pointer; font-family:inherit; display:none; }
   #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
   .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
   .note { font-size:12px; color:#888; text-align:center; margin-top:6px; }
@@ -36,6 +38,7 @@
   <div class="preview" id="preview"></div>
 
   <button id="send" disabled>📣 ส่งประกาศให้ทุกสาขา</button>
+  <button id="edit">✏️ แก้ไขข้อความ</button>
   <div class="note">⚠️ กดแล้วส่งหาพนักงานทุกคนทุกสาขาทันที</div>
   <div id="status"></div>
 
@@ -46,12 +49,19 @@ const CONFIG = { LIFF_ID: "2010363505-OKn7WQNY", WEBHOOK_URL: "https://sittan.ap
 const $ = id => document.getElementById(id);
 let state = { userId:"", displayName:"", confirming:false };
 
+function toDraft(){
+  state.confirming = false;
+  $("send").textContent = "📣 ส่งประกาศให้ทุกสาขา";
+  $("preview").style.display = "none";
+  $("edit").style.display = "none";
+}
 $("msg").addEventListener("input", () => {
   const v = $("msg").value;
   $("count").textContent = v.length + " ตัวอักษร";
   $("send").disabled = (v.trim() === "");
-  state.confirming = false; $("send").textContent = "📣 ส่งประกาศให้ทุกสาขา"; $("preview").style.display="none";
+  toDraft();
 });
+$("edit").onclick = () => { toDraft(); $("msg").focus(); $("msg").scrollIntoView({behavior:"smooth",block:"center"}); };
 
 async function initWho(){
   if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId="TEST"; return; }
@@ -72,6 +82,7 @@ $("send").onclick = async () => {
     $("preview").textContent = "📣 ประกาศจากบริษัท\n\n" + text;
     $("preview").style.display = "block";
     $("send").textContent = "✅ ยืนยันส่งจริง (กดอีกครั้ง)";
+    $("edit").style.display = "block";
     state.confirming = true;
     return;
   }
