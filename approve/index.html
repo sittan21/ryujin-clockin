@@ -38,18 +38,18 @@ function getParams(){
 async function run(){
   const { req, decision } = getParams();
   if(!req){ show("⚠️","ลิงก์ไม่ถูกต้อง","ไม่พบรหัสคำขอ","#c0392b"); return; }
-  let managerName = "";
+  let managerName = "", approverId = "";
   try{
     if(CONFIG.LIFF_ID){
       await liff.init({ liffId: CONFIG.LIFF_ID });
       if(!liff.isLoggedIn()){ liff.login(); return; }
-      const prof = await liff.getProfile(); managerName = prof.displayName || "";
+      const prof = await liff.getProfile(); managerName = prof.displayName || ""; approverId = prof.userId || "";
     }
-  }catch(e){ managerName = ""; }
+  }catch(e){ managerName = ""; approverId = ""; }
   try{
     const res = await fetch(CONFIG.WEBHOOK_URL,{ method:"POST",
       headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ reqId: req, decision: decision || "approve", managerName: managerName }) });
+      body: JSON.stringify({ reqId: req, decision: decision || "approve", managerName: managerName, approverId: approverId }) });
     const data = await res.json().catch(()=>({}));
     if(!res.ok) throw new Error("HTTP "+res.status);
     if(data.already){ show("ℹ️","ดำเนินการไปแล้ว", data.message||"คำขอนี้ถูกดำเนินการแล้ว","#e67e22"); }
