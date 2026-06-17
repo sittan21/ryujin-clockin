@@ -42,14 +42,17 @@
     <button data-t="ขอสลับวันหยุด">🔄 สลับวันหยุด</button>
     <button data-t="ขอเข้าสาย">⏰ ขอเข้าสาย</button>
     <button data-t="ขอกลับก่อน">🏃 ขอกลับก่อน</button>
+    <button data-t="ขอเบิกเงินล่วงหน้า">💵 เบิกเงินล่วงหน้า</button>
   </div>
 
   <div class="fld" id="fSwapOld"><label>วันหยุดเดิม (ที่จะสลับออก)</label><input type="date" id="swapOld"></div>
 
-  <div class="row">
+  <div class="row" id="rowDate">
     <div><label id="lblFrom">วันที่</label><input type="date" id="dateFrom"></div>
     <div class="fld" id="fTo" style="display:none"><label>ถึงวันที่</label><input type="date" id="dateTo"></div>
   </div>
+
+  <div class="fld" id="fAmount"><label>จำนวนเงินที่ขอเบิก (บาท)</label><input type="tel" inputmode="numeric" id="amount" placeholder="เช่น 2000"></div>
 
   <div class="fld" id="fTime"><label id="lblTime">เวลา</label><input type="time" id="time"></div>
 
@@ -71,6 +74,7 @@ $("dateFrom").value = today; $("dateTo").value = today;
 
 const LEAVE = ["ขอลาป่วย","ขอลากิจ","ขอลาพักร้อน"];
 const TIMED = ["ขอเข้าสาย","ขอกลับก่อน"];
+const ADVANCE = "ขอเบิกเงินล่วงหน้า";
 
 document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   document.querySelectorAll("#types button").forEach(x => x.classList.remove("sel"));
@@ -78,17 +82,22 @@ document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   const isLeave = LEAVE.includes(state.type);
   const isTimed = TIMED.includes(state.type);
   const isSwap  = state.type === "ขอสลับวันหยุด";
+  const isAdv   = state.type === ADVANCE;
   $("fTo").style.display   = isLeave ? "block" : "none";
   $("fTime").style.display = isTimed ? "block" : "none";
   $("fSwapOld").style.display = isSwap ? "block" : "none";
+  $("fAmount").style.display = isAdv ? "block" : "none";
+  $("rowDate").style.display = isAdv ? "none" : "flex";
   $("lblFrom").textContent = isSwap ? "วันหยุดใหม่ (ที่จะหยุดแทน)" : (isTimed ? "วันที่" : "วันที่เริ่ม");
   $("lblTime").textContent = state.type === "ขอเข้าสาย" ? "เวลาที่จะเข้า" : "เวลาที่จะกลับ";
   refresh();
 });
-["dateFrom","dateTo","time","swapOld","reason"].forEach(id => $(id).addEventListener("input", refresh));
+["dateFrom","dateTo","time","swapOld","reason","amount"].forEach(id => $(id).addEventListener("input", refresh));
 
 function refresh(){
-  $("submit").disabled = !(state.type && $("dateFrom").value);
+  const isAdv = state.type === ADVANCE;
+  if(isAdv){ $("amount").value = ($("amount").value||"").replace(/[^0-9]/g,""); }
+  $("submit").disabled = !(state.type && (isAdv ? (Number($("amount").value||0) > 0) : $("dateFrom").value));
   let msg = "";
   if(state.type && $("dateFrom").value){
     const t0 = new Date(); t0.setHours(0,0,0,0);
@@ -117,12 +126,14 @@ $("submit").onclick = async () => {
   const isLeave = LEAVE.includes(state.type);
   const isTimed = TIMED.includes(state.type);
   const isSwap  = state.type === "ขอสลับวันหยุด";
+  const isAdv   = state.type === ADVANCE;
   const payload = {
     userId: state.userId, displayName: state.displayName, type: state.type,
-    dateFrom: $("dateFrom").value,
+    dateFrom: isAdv ? today : $("dateFrom").value,
     dateTo: isLeave ? ($("dateTo").value || $("dateFrom").value) : "",
     time: isTimed ? $("time").value : "",
     swapOld: isSwap ? $("swapOld").value : "",
+    amount: isAdv ? Number(($("amount").value||"").replace(/[^0-9]/g,"")) : "",
     reason: $("reason").value,
     clientTime: new Date().toISOString()
   };
