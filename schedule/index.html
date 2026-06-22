@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>จัดตารางกะ — Ryujin</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Kanit",-apple-system,"Segoe UI","Sarabun",sans-serif;background:#F1F5F9;color:#0F172A;padding:16px;max-width:520px;margin:0 auto}
+  h1{font-size:20px;font-weight:600;text-align:center;color:#1E3A8A;margin:6px 0 2px}
+  #who{text-align:center;font-size:13px;color:#64748B;font-weight:300;margin-bottom:12px;min-height:18px}
+  .mbh{font-size:13px;font-weight:500;color:#475569;margin:16px 4px 6px}
+  .card{background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:11px;box-shadow:0 1px 3px rgba(15,23,42,.06);border:1px solid #E2E8F0}
+  .nm{font-size:15px;font-weight:600;color:#1E293B;margin-bottom:8px}
+  .nm small{font-weight:300;color:#94A3B8;font-size:12px;margin-left:6px}
+  .drow{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .dlab{width:62px;font-size:13px;font-weight:300;color:#475569;flex:0 0 62px}
+  .drow input{flex:1;padding:7px 9px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+  .drow input.off{background:#F8FAFC;color:#94A3B8}
+  .qf{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px}
+  .qf button{font-size:11px;padding:4px 9px;border-radius:14px;border:1px solid #C7D2FE;background:#EEF2FF;color:#4338CA;font-family:inherit;cursor:pointer}
+  #save{position:sticky;bottom:10px;width:100%;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:600;background:#1E3A8A;color:#fff;margin-top:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(30,58,138,.3)}
+  #save:disabled{opacity:.5}
+  #status{text-align:center;font-size:14px;margin:10px 0;min-height:20px;font-weight:500}
+  .ok{color:#16A34A}.bad{color:#DC2626}.wait{color:#E67700}
+  .hint{font-size:11px;color:#94A3B8;font-weight:300;text-align:center;line-height:1.6;margin-top:4px}
+</style>
+</head>
+<body>
+  <h1>🗓️ จัดตารางกะพนักงาน</h1>
+  <div id="who">กำลังโหลด…</div>
+  <div id="list"></div>
+  <button id="save" disabled>💾 บันทึกตารางกะ</button>
+  <div id="status"></div>
+  <div class="hint">ใส่เวลาเข้า-ออก เช่น <b>09:30-22:00</b> · วันหยุดพิมพ์ <b>หยุด</b> หรือเว้นว่าง · ปุ่มลัดช่วยกรอกเร็ว</div>
+
+<script>
+/* ===== ตั้งค่า — สร้าง LIFF "จัดตารางกะ" endpoint=/schedule/ แล้ววาง ID (เว้นว่าง=โหมดทดสอบ) ===== */
+const CONFIG = { LIFF_ID: "", WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/schedule-mgr" };
+const DAYS = ["จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์","อาทิตย์"];
+const $ = id => document.getElementById(id);
+let state = { userId:"", staff:[] };
+
+function parseSched(raw){
+  const m = {};
+  String(raw||"").split(/[\n,]+/).forEach(ln=>{
+    ln=ln.trim(); if(!ln) return; const eq=ln.indexOf("="); if(eq<0) return;
+    m[ln.slice(0,eq).trim()] = ln.slice(eq+1).trim();
+  });
+  return m;
+}
+function render(){
+  let lastBranch = "";
+  let html = "";
+  state.staff.forEach((s, idx) => {
+    if(s.branchName !== lastBranch){ html += '<div class="mbh">'+esc(s.branchName||"สาขา")+'</div>'; lastBranch = s.branchName; }
+    const m = parseSched(s.sched);
+    let rows = "";
+    DAYS.forEach(d => {
+      const v = m[d] || "";
+      const off = (v.indexOf("หยุด")!==-1);
+      rows += '<div class="drow"><span class="dlab">'+d+'</span><input data-emp="'+idx+'" data-day="'+d+'" value="'+esc(v)+'"'+(off?' class="off"':'')+' placeholder="09:30-22:00 / หยุด"></div>';
+    });
+    html += '<div class="card"><div class="nm">'+esc(s.name)+(s.off?'<small>หยุดประจำ: '+esc(s.off)+'</small>':'')+'</div>'
+      + '<div class="qf"><button data-fill="'+idx+'" data-t="09:30-22:00">ทั้งสัปดาห์ 09:30-22:00</button>'
+      + '<button data-fill="'+idx+'" data-t="10:30-23:00">ทั้งสัปดาห์ 10:30-23:00</button></div>'
+      + rows + '</div>';
+  });
+  $("list").innerHTML = html;
+  document.querySelectorAll("input.off,.drow input").forEach(i=>i.addEventListener("input", ()=>{ const off=(i.value.indexOf("หยุด")!==-1); i.classList.toggle("off",off); }));
+  document.querySelectorAll(".qf button").forEach(b=>b.onclick=()=>{
+    const idx=b.dataset.fill, t=b.dataset.t;
+    document.querySelectorAll('input[data-emp="'+idx+'"]').forEach(i=>{ if(i.value.indexOf("หยุด")===-1){ i.value=t; i.classList.remove("off"); } });
+  });
+  $("save").disabled = false;
+}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+async function load(){
+  try{
+    const res = await fetch(CONFIG.WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"load",userId:state.userId})});
+    const data = await res.json();
+    if(!data || !data.ok){ $("who").innerHTML='<span class="bad">ไม่พบสิทธิ์ (เฉพาะผู้จัดการ/เจ้าของ)</span>'; return; }
+    state.staff = data.staff||[];
+    $("who").textContent = (data.reqName||"") + " · " + (data.role==="Director"?"เจ้าของ (ทุกสาขา)":"ผู้จัดการสาขา") + " · "+state.staff.length+" คน";
+    if(!state.staff.length){ $("list").innerHTML='<div class="hint">ยังไม่มีพนักงานในสาขา</div>'; return; }
+    render();
+  }catch(e){ $("who").innerHTML='<span class="bad">โหลดไม่สำเร็จ ลองใหม่</span>'; }
+}
+
+$("save").onclick = async () => {
+  $("save").disabled = true; $("status").innerHTML='<span class="wait">⏳ กำลังบันทึก…</span>';
+  const items = state.staff.map((s, idx) => {
+    const lines = [];
+    DAYS.forEach(d => {
+      const inp = document.querySelector('input[data-emp="'+idx+'"][data-day="'+d+'"]');
+      const v = (inp.value||"").trim();
+      if(v) lines.push(d+"="+v);
+    });
+    return { empId: s.id, sched: lines.join("\n") };
+  });
+  try{
+    const res = await fetch(CONFIG.WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"save",userId:state.userId,items:items})});
+    const data = await res.json();
+    if(data && data.ok){ $("status").innerHTML='<span class="ok">✅ บันทึกตารางกะแล้ว</span>'; }
+    else { $("status").innerHTML='<span class="bad">บันทึกไม่สำเร็จ</span>'; }
+    $("save").disabled = false;
+  }catch(e){ $("status").innerHTML='<span class="bad">❌ บันทึกไม่สำเร็จ ลองใหม่</span>'; $("save").disabled=false; }
+};
+
+async function init(){
+  if(!CONFIG.LIFF_ID){ $("who").innerHTML="🧪 โหมดทดสอบ — ใส่ ?uid=USERID ใน URL"; const p=new URLSearchParams(location.search); state.userId=p.get("uid")||""; if(state.userId) load(); return; }
+  try{
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    const prof = await liff.getProfile(); state.userId = prof.userId; load();
+  }catch(e){ $("who").innerHTML='<span class="bad">เปิดผ่าน LINE เท่านั้น</span>'; }
+}
+init();
+</script>
+</body>
+</html>
