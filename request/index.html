@@ -45,6 +45,7 @@
     <button data-t="ขอเบิกเงินล่วงหน้า">💵 เบิกเงินล่วงหน้า</button>
     <button data-t="ลืมเข้างาน">⏱️ ลืมกดเข้า</button>
     <button data-t="ลืมออกงาน">⏱️ ลืมกดออก</button>
+    <button data-t="ขอยกเลิกการลา">🚫 ยกเลิกการลา</button>
   </div>
 
   <div class="fld" id="fSwapOld"><label>วันหยุดเดิม (ที่จะสลับออก)</label><input type="date" id="swapOld"></div>
@@ -78,6 +79,7 @@ const LEAVE = ["ขอลาป่วย","ขอลากิจ","ขอลา�
 const TIMED = ["ขอเข้าสาย","ขอกลับก่อน"];
 const ADVANCE = "ขอเบิกเงินล่วงหน้า";
 const FORGOT = ["ลืมเข้างาน","ลืมออกงาน"];
+const CANCEL = "ขอยกเลิกการลา";
 
 document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   document.querySelectorAll("#types button").forEach(x => x.classList.remove("sel"));
@@ -87,12 +89,13 @@ document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   const isSwap  = state.type === "ขอสลับวันหยุด";
   const isAdv   = state.type === ADVANCE;
   const isForgot = FORGOT.includes(state.type);
+  const isCancel = state.type === CANCEL;
   $("fTo").style.display   = isLeave ? "block" : "none";
   $("fTime").style.display = (isTimed || isForgot) ? "block" : "none";
   $("fSwapOld").style.display = isSwap ? "block" : "none";
   $("fAmount").style.display = isAdv ? "block" : "none";
   $("rowDate").style.display = isAdv ? "none" : "flex";
-  $("lblFrom").textContent = isSwap ? "วันหยุดใหม่ (ที่จะหยุดแทน)" : (isForgot ? "วันที่ (ที่ลืมลงเวลา)" : (isTimed ? "วันที่" : "วันที่เริ่ม"));
+  $("lblFrom").textContent = isSwap ? "วันหยุดใหม่ (ที่จะหยุดแทน)" : (isCancel ? "วันที่ของใบลาที่จะยกเลิก" : (isForgot ? "วันที่ (ที่ลืมลงเวลา)" : (isTimed ? "วันที่" : "วันที่เริ่ม")));
   $("lblTime").textContent = state.type === "ขอเข้าสาย" ? "เวลาที่จะเข้า"
     : (state.type === "ขอกลับก่อน" ? "เวลาที่จะกลับ"
     : (state.type === "ลืมเข้างาน" ? "เวลาที่เข้างานจริง" : "เวลาที่ออกงานจริง"));
@@ -107,6 +110,7 @@ function refresh(){
   let ok = !!state.type;
   if(isAdv){ ok = ok && Number($("amount").value||0) > 0; }
   else if(isForgot){ ok = ok && $("dateFrom").value && $("time").value && $("reason").value.trim(); }
+  else if(state.type === CANCEL){ ok = ok && $("dateFrom").value && $("reason").value.trim(); }
   else { ok = ok && $("dateFrom").value; }
   $("submit").disabled = !ok;
   let msg = "";
@@ -117,6 +121,7 @@ function refresh(){
     if(state.type === "ขอลากิจ" && ahead < 1){ msg = "⚠️ ลากิจควรแจ้งล่วงหน้าอย่างน้อย 1 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
     if(state.type === "ขอลาพักร้อน" && ahead < 15){ msg = "⚠️ ลาพักร้อนควรแจ้งล่วงหน้าอย่างน้อย 15 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
     if(isForgot){ msg = "⏱️ ลืมลงเวลา = ยื่นย้อนหลังให้ ผจก.อนุมัติ · กรอกเวลาจริง · เดือนนี้จะไม่ได้เบี้ยขยัน"; }
+    if(state.type === CANCEL){ msg = "🚫 ยกเลิกการลา = เลือกวันที่ของใบลาที่อนุมัติไปแล้ว · ยื่นให้ ผจก.อนุมัติ · ระบบจะคืนวันลาที่หักไปให้"; }
   }
   $("warn").style.display = msg ? "block" : "none"; $("warn").textContent = msg;
 }
