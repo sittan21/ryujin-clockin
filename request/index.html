@@ -6,71 +6,83 @@
 <title>แจ้งคำขอ — Ryujin</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&display=swap');
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; background:#f2f3f5;
     color:#1a1a1a; padding:16px; max-width:460px; margin:0 auto; }
-  h1 { font-size:20px; text-align:center; margin:8px 0 4px; }
+  h1 { font-size:20px; text-align:center; margin:8px 0 2px; }
+  h1 .mm { font-size:13px; }
   #who { text-align:center; font-size:15px; color:#555; margin-bottom:14px; min-height:20px; }
   #who b { color:#7B5CFF; }
   label { display:block; font-size:14px; font-weight:700; margin:14px 0 6px; }
   .types { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .types button { padding:13px 6px; border:2px solid #ddd; border-radius:12px; background:#fff;
-    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; color:#444; }
+  .types button { padding:11px 6px; border:2px solid #ddd; border-radius:12px; background:#fff;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; color:#444; line-height:1.2; }
   .types button.sel { border-color:#7B5CFF; background:#efeaff; color:#7B5CFF; }
   input, textarea { width:100%; padding:12px; border:1px solid #ccc; border-radius:10px;
     font-size:16px; font-family:inherit; background:#fff; }
   textarea { min-height:64px; resize:vertical; }
   .row { display:flex; gap:8px; } .row > div { flex:1; }
   .fld { display:none; }
-  #submit { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:700;
-    background:#7B5CFF; color:#fff; margin-top:18px; cursor:pointer; font-family:inherit; }
+  #submit { width:100%; border:none; border-radius:14px; padding:14px; font-size:17px; font-weight:700;
+    background:#7B5CFF; color:#fff; margin-top:18px; cursor:pointer; font-family:inherit; line-height:1.25; }
   #submit:disabled { opacity:.45; }
-  #warn { display:none; font-size:13px; color:#b8860b; background:#fbf3d9; padding:10px; border-radius:10px; margin-top:14px; line-height:1.4; }
-  #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; }
+  #warn { display:none; font-size:13px; color:#b8860b; background:#fbf3d9; padding:10px; border-radius:10px; margin-top:14px; line-height:1.45; }
+  #status { margin-top:14px; text-align:center; font-size:15px; min-height:24px; font-weight:600; line-height:1.4; }
   .ok{color:#27ae60;} .bad{color:#c0392b;} .wait{color:#e67e22;}
+  /* ---- ภาษาพม่า (ตัวรอง ใต้ไทย) ---- */
+  .mm { display:block; font-family:"Noto Sans Myanmar",sans-serif; font-weight:500;
+        font-size:12px; color:#8a8f98; margin-top:2px; line-height:1.4; }
+  .types button .mm { font-size:11px; color:#9a8ff0; font-weight:500; margin-top:3px; }
+  .types button.sel .mm { color:#7B5CFF; }
+  label .mm { font-weight:600; }
+  #submit .mm { color:#ece6ff; font-size:12px; }
+  #warn .mm { color:#a6780a; margin-top:3px; }
+  #status .mm { font-size:13px; }
 </style>
 </head>
 <body>
-  <h1>📨 แจ้งคำขอ</h1>
-  <div id="who">กำลังโหลด…</div>
+  <h1>📨 แจ้งคำขอ<span class="mm">တောင်းဆိုချက် တင်ရန်</span></h1>
+  <div id="who">กำลังโหลด…<span class="mm">ဖွင့်နေသည်…</span></div>
 
-  <label>ประเภทคำขอ</label>
+  <label>ประเภทคำขอ<span class="mm">တောင်းဆိုမှု အမျိုးအစား</span></label>
   <div class="types" id="types">
-    <button data-t="ขอลาป่วย">🟠 ลาป่วย</button>
-    <button data-t="ขอลากิจ">🟡 ลากิจ</button>
-    <button data-t="ขอลาพักร้อน">🔵 ลาพักร้อน</button>
-    <button data-t="ขอสลับวันหยุด">🔄 สลับวันหยุด</button>
-    <button data-t="ขอเข้าสาย">⏰ ขอเข้าสาย</button>
-    <button data-t="ขอกลับก่อน">🏃 ขอกลับก่อน</button>
-    <button data-t="ขอเบิกเงินล่วงหน้า">💵 เบิกเงินล่วงหน้า</button>
-    <button data-t="ลืมเข้างาน">⏱️ ลืมกดเข้า</button>
-    <button data-t="ลืมออกงาน">⏱️ ลืมกดออก</button>
-    <button data-t="ขอยกเลิกการลา">🚫 ยกเลิกการลา</button>
+    <button data-t="ขอลาป่วย">🟠 ลาป่วย<span class="mm">ဖျားနာခွင့်</span></button>
+    <button data-t="ขอลากิจ">🟡 ลากิจ<span class="mm">ကိစ္စခွင့်</span></button>
+    <button data-t="ขอลาพักร้อน">🔵 ลาพักร้อน<span class="mm">အနားယူခွင့်</span></button>
+    <button data-t="ขอสลับวันหยุด">🔄 สลับวันหยุด<span class="mm">နားရက် အလဲအလှယ်</span></button>
+    <button data-t="ขอเข้าสาย">⏰ ขอเข้าสาย<span class="mm">နောက်ကျ ဝင်ခွင့်</span></button>
+    <button data-t="ขอกลับก่อน">🏃 ขอกลับก่อน<span class="mm">စော ထွက်ခွင့်</span></button>
+    <button data-t="ขอเบิกเงินล่วงหน้า">💵 เบิกเงินล่วงหน้า<span class="mm">လစာ ကြိုယူ</span></button>
+    <button data-t="ลืมเข้างาน">⏱️ ลืมกดเข้า<span class="mm">ဝင်ချိန် မေ့</span></button>
+    <button data-t="ลืมออกงาน">⏱️ ลืมกดออก<span class="mm">ထွက်ချိန် မေ့</span></button>
+    <button data-t="ขอยกเลิกการลา">🚫 ยกเลิกการลา<span class="mm">ခွင့် ပယ်ဖျက်</span></button>
   </div>
 
-  <div class="fld" id="fSwapOld"><label>วันหยุดเดิม (ที่จะสลับออก)</label><input type="date" id="swapOld"></div>
+  <div class="fld" id="fSwapOld"><label>วันหยุดเดิม (ที่จะสลับออก)<span class="mm">လဲမည့် နားရက် (အဟောင်း)</span></label><input type="date" id="swapOld"></div>
 
   <div class="row" id="rowDate">
-    <div><label id="lblFrom">วันที่</label><input type="date" id="dateFrom"></div>
-    <div class="fld" id="fTo" style="display:none"><label>ถึงวันที่</label><input type="date" id="dateTo"></div>
+    <div><label id="lblFrom">วันที่<span class="mm">ရက်စွဲ</span></label><input type="date" id="dateFrom"></div>
+    <div class="fld" id="fTo" style="display:none"><label>ถึงวันที่<span class="mm">အထိ ရက်စွဲ</span></label><input type="date" id="dateTo"></div>
   </div>
 
-  <div class="fld" id="fAmount"><label>จำนวนเงินที่ขอเบิก (บาท)</label><input type="tel" inputmode="numeric" id="amount" placeholder="เช่น 2000"></div>
+  <div class="fld" id="fAmount"><label>จำนวนเงินที่ขอเบิก (บาท)<span class="mm">တောင်းယူမည့် ငွေ (ဘတ်)</span></label><input type="tel" inputmode="numeric" id="amount" placeholder="เช่น 2000"></div>
 
-  <div class="fld" id="fTime"><label id="lblTime">เวลา</label><input type="time" id="time"></div>
+  <div class="fld" id="fTime"><label id="lblTime">เวลา<span class="mm">အချိန်</span></label><input type="time" id="time"></div>
 
-  <label>เหตุผล</label>
-  <textarea id="reason" placeholder="เช่น ไปหาหมอ / ธุระครอบครัว / ลืมกดตอนเข้างาน"></textarea>
+  <label>เหตุผล<span class="mm">အကြောင်းရင်း</span></label>
+  <textarea id="reason" placeholder="เช่น ไปหาหมอ / ธุระครอบครัว / ลืมกดตอนเข้างาน  ·  ဥပမာ— ဆရာဝန်ပြ / မိသားစုကိစ္စ"></textarea>
 
   <div id="warn"></div>
-  <button id="submit" disabled>ส่งคำขอ (รออนุมัติ)</button>
+  <button id="submit" disabled>ส่งคำขอ (รออนุมัติ)<span class="mm">တောင်းဆိုချက် ပို့ (အတည်ပြုစောင့်)</span></button>
   <div id="status"></div>
 
 <script>
-/* ===== ตั้งค่า — เติมทีหลัง ===== */
+/* ===== ตั้งค่า ===== */
 const CONFIG = { LIFF_ID: "2010363505-UBHSyE3F", WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/request" };
 
 const $ = id => document.getElementById(id);
+const mm = s => '<span class="mm">'+s+'</span>';   // ตัวช่วยสร้างบรรทัดพม่า
 let state = { userId:"", displayName:"", type:"" };
 const today = new Date().toISOString().slice(0,10);
 $("dateFrom").value = today; $("dateTo").value = today;
@@ -95,10 +107,17 @@ document.querySelectorAll("#types button").forEach(b => b.onclick = () => {
   $("fSwapOld").style.display = isSwap ? "block" : "none";
   $("fAmount").style.display = isAdv ? "block" : "none";
   $("rowDate").style.display = isAdv ? "none" : "flex";
-  $("lblFrom").textContent = isSwap ? "วันหยุดใหม่ (ที่จะหยุดแทน)" : (isCancel ? "วันที่ของใบลาที่จะยกเลิก" : (isForgot ? "วันที่ (ที่ลืมลงเวลา)" : (isTimed ? "วันที่" : "วันที่เริ่ม")));
-  $("lblTime").textContent = state.type === "ขอเข้าสาย" ? "เวลาที่จะเข้า"
-    : (state.type === "ขอกลับก่อน" ? "เวลาที่จะกลับ"
-    : (state.type === "ลืมเข้างาน" ? "เวลาที่เข้างานจริง" : "เวลาที่ออกงานจริง"));
+  // ป้ายวันที่ (ไทย + พม่า)
+  $("lblFrom").innerHTML = isSwap ? ("วันหยุดใหม่ (ที่จะหยุดแทน)"+mm("အစားထိုး နားရက် (အသစ်)"))
+    : (isCancel ? ("วันที่ของใบลาที่จะยกเลิก"+mm("ပယ်ဖျက်မည့် ခွင့်ရက်"))
+    : (isForgot ? ("วันที่ (ที่ลืมลงเวลา)"+mm("ချိန်မေ့သည့် ရက်စွဲ"))
+    : (isTimed  ? ("วันที่"+mm("ရက်စွဲ"))
+    : ("วันที่เริ่ม"+mm("စတင်သည့် ရက်")))));
+  // ป้ายเวลา (ไทย + พม่า)
+  $("lblTime").innerHTML = state.type === "ขอเข้าสาย" ? ("เวลาที่จะเข้า"+mm("ဝင်မည့် အချိန်"))
+    : (state.type === "ขอกลับก่อน" ? ("เวลาที่จะกลับ"+mm("ပြန်မည့် အချိန်"))
+    : (state.type === "ลืมเข้างาน" ? ("เวลาที่เข้างานจริง"+mm("အမှန် ဝင်ချိန်"))
+    : ("เวลาที่ออกงานจริง"+mm("အမှန် ထွက်ချိန်"))));
   refresh();
 });
 ["dateFrom","dateTo","time","swapOld","reason","amount"].forEach(id => $(id).addEventListener("input", refresh));
@@ -118,12 +137,12 @@ function refresh(){
     const t0 = new Date(); t0.setHours(0,0,0,0);
     const s0 = new Date($("dateFrom").value + "T00:00:00");
     const ahead = Math.round((s0 - t0)/86400000);
-    if(state.type === "ขอลากิจ" && ahead < 1){ msg = "⚠️ ลากิจควรแจ้งล่วงหน้าอย่างน้อย 1 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
-    if(state.type === "ขอลาพักร้อน" && ahead < 15){ msg = "⚠️ ลาพักร้อนควรแจ้งล่วงหน้าอย่างน้อย 15 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"; }
-    if(isForgot){ msg = "⏱️ ลืมลงเวลา = ยื่นย้อนหลังให้ ผจก.อนุมัติ · กรอกเวลาจริง · เดือนนี้จะไม่ได้เบี้ยขยัน"; }
-    if(state.type === CANCEL){ msg = "🚫 ยกเลิกการลา = เลือกวันที่ของใบลาที่อนุมัติไปแล้ว · ยื่นให้ ผจก.อนุมัติ · ระบบจะคืนวันลาที่หักไปให้"; }
+    if(state.type === "ขอลากิจ" && ahead < 1){ msg = "⚠️ ลากิจควรแจ้งล่วงหน้าอย่างน้อย 1 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"+mm("ကိစ္စခွင့် ၁ ရက် ကြိုတင်အကြောင်းကြားသင့် — ပို့လို့ရသော်လည်း မန်နေဂျာ ဆုံးဖြတ်မည်"); }
+    if(state.type === "ขอลาพักร้อน" && ahead < 15){ msg = "⚠️ ลาพักร้อนควรแจ้งล่วงหน้าอย่างน้อย 15 วัน — ส่งได้ แต่ให้ผู้จัดการพิจารณา"+mm("အနားခွင့် ၁၅ ရက် ကြိုတင်အကြောင်းကြားသင့် — ပို့လို့ရသော်လည်း မန်နေဂျာ ဆုံးဖြတ်မည်"); }
+    if(isForgot){ msg = "⏱️ ลืมลงเวลา = ยื่นย้อนหลังให้ ผจก.อนุมัติ · กรอกเวลาจริง · เดือนนี้จะไม่ได้เบี้ยขยัน"+mm("ချိန်မေ့ = နောက်ကြောင်းပြန်တင်၍ မန်နေဂျာ အတည်ပြု · အမှန်ချိန်ဖြည့် · ဒီလ ကြိုးစားကြေး မရ"); }
+    if(state.type === CANCEL){ msg = "🚫 ยกเลิกการลา = เลือกวันที่ของใบลาที่อนุมัติไปแล้ว · ยื่นให้ ผจก.อนุมัติ · ระบบจะคืนวันลาที่หักไปให้"+mm("ခွင့်ပယ်ဖျက် = အတည်ပြုပြီး ခွင့်ရက်ကိုရွေး · မန်နေဂျာ အတည်ပြု · နုတ်ထားသော ခွင့်ရက် ပြန်ပေးမည်"); }
   }
-  $("warn").style.display = msg ? "block" : "none"; $("warn").textContent = msg;
+  $("warn").style.display = msg ? "block" : "none"; $("warn").innerHTML = msg;
 }
 
 async function initWho(){
@@ -133,13 +152,13 @@ async function initWho(){
     if(!liff.isLoggedIn()){ liff.login(); return; }
     const p = await liff.getProfile();
     state.userId=p.userId; state.displayName=p.displayName;
-    $("who").innerHTML="ผู้ขอ: <b>"+p.displayName+"</b>";
+    $("who").innerHTML="ผู้ขอ / တောင်းသူ: <b>"+p.displayName+"</b>";
   }catch(e){ $("who").innerHTML="🧪 โหมดทดสอบ (นอก LINE)"; state.userId="TEST"; }
 }
 
 $("submit").onclick = async () => {
   $("submit").disabled = true;
-  $("status").innerHTML = '<span class="wait">⏳ กำลังส่ง…</span>';
+  $("status").innerHTML = '<span class="wait">⏳ กำลังส่ง…'+mm("ပို့နေသည်…")+'</span>';
   const isLeave = LEAVE.includes(state.type);
   const isTimed = TIMED.includes(state.type);
   const isSwap  = state.type === "ขอสลับวันหยุด";
@@ -159,9 +178,9 @@ $("submit").onclick = async () => {
     const res = await fetch(CONFIG.WEBHOOK_URL,{ method:"POST",
       headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
     if(!res.ok) throw new Error("HTTP "+res.status);
-    $("status").innerHTML='<span class="ok">✅ ส่งคำขอแล้ว! รอผู้จัดการอนุมัติ</span>';
+    $("status").innerHTML='<span class="ok">✅ ส่งคำขอแล้ว! รอผู้จัดการอนุมัติ'+mm("ပို့ပြီးပါပြီ! မန်နေဂျာ အတည်ပြုရန် စောင့်ပါ")+'</span>';
     if(CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(()=>liff.closeWindow(),1800);
-  }catch(e){ $("status").innerHTML='<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่</span>'; refresh(); }
+  }catch(e){ $("status").innerHTML='<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่'+mm("မအောင်မြင်ပါ ထပ်ကြိုးစားပါ")+'</span>'; refresh(); }
 };
 
 initWho();
