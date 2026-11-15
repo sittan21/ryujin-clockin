@@ -34,7 +34,7 @@
   <div id="who">กำลังโหลด…</div>
   <div class="note">บริษัทจะโอนเงินเดือนเข้าบัญชีนี้ — กรุณากรอกให้ถูกต้อง 🙏<br>แนะนำ <b>กสิกรไทย</b> (โอนทีเดียวทั้งบริษัท)</div>
 
-  <label>ธนาคาร</label>
+  <label>ธนาคาร · ဘဏ်</label>
   <div class="banks" id="banks">
     <button data-b="กสิกรไทย">🟢 กสิกรไทย</button>
     <button data-b="ไทยพาณิชย์">🟣 ไทยพาณิชย์</button>
@@ -46,13 +46,17 @@
     <button data-b="อื่นๆ">➕ อื่นๆ</button>
   </div>
 
-  <label>เลขบัญชี</label>
+  <label>เลขบัญชี · ဘဏ်အကောင့်နံပါတ်</label>
   <input type="tel" id="account" inputmode="numeric" placeholder="เช่น 1234567890" autocomplete="off">
-  <div class="hint">พิมพ์เฉพาะตัวเลข (กสิกร = 10 หลัก)</div>
+  <div class="hint">พิมพ์เฉพาะตัวเลข (กสิกร = 10 หลัก) · ကိန်းဂဏန်းသာ ရိုက်ပါ</div>
 
-  <label>ชื่อบัญชี (ภาษาอังกฤษ)</label>
+  <label>ชื่อบัญชี (ภาษาอังกฤษ) · အကောင့်အမည် (အင်္ဂလိပ်)</label>
   <input type="text" id="nameEn" placeholder="เช่น Somchai Jaidee" autocomplete="off">
   <div class="hint">ชื่อ-สกุล อังกฤษ ตามหน้าสมุดบัญชี (ถ้ามี · เว้นว่างได้)</div>
+
+  <label>เลขประกันสังคม · လူမှုဖူလုံရေး နံပါတ်</label>
+  <input type="tel" id="ssn" inputmode="numeric" maxlength="13" placeholder="13 หลัก (ถ้ามี)" autocomplete="off">
+  <div class="hint">ถ้ามี (เว้นว่างได้) · ရှိလျှင်သာ ဖြည့်ပါ (မဖြည့်လည်းရ)</div>
 
   <button id="submit" disabled>บันทึกเลขบัญชี</button>
   <div id="status"></div>
@@ -77,6 +81,7 @@ $("account").addEventListener("input", () => {
   $("account").value = $("account").value.replace(/[^0-9]/g, "");
   refresh();
 });
+$("ssn").addEventListener("input", () => { $("ssn").value = $("ssn").value.replace(/[^0-9]/g, ""); });
 function refresh(){ $("submit").disabled = !(state.bank && $("account").value.length >= 6); }
 
 /* LIFF */
@@ -98,7 +103,8 @@ $("submit").onclick = async () => {
     userId: state.userId, displayName: state.displayName,
     bank: state.bank,
     account: $("account").value.trim(),
-    nameEn: $("nameEn").value.trim()
+    nameEn: $("nameEn").value.trim(),
+    ssn: $("ssn").value.trim()
   };
   if(!CONFIG.WEBHOOK_URL){
     $("status").innerHTML='<span class="wait">🧪 โหมดทดสอบ: ยังไม่ตั้ง webhook (ดู console)</span>';
