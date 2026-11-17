@@ -6,6 +6,7 @@
 <title>ลงเวลาทำงาน — Ryujin</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&display=swap');
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; font-family: -apple-system, "Segoe UI", "Sarabun", sans-serif;
@@ -20,162 +21,245 @@
   }
   #cam, #preview { width: 100%; height: 100%; object-fit: cover; display: block; }
   #preview { display: none; }
+  #camMsg { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    text-align: center; color: #fff; padding: 24px; font-size: 15px; line-height: 1.5; }
   .clock { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.55); color:#fff;
     padding: 4px 10px; border-radius: 20px; font-size: 13px; }
   button {
-    width: 100%; border: none; border-radius: 14px; padding: 16px; font-size: 17px;
-    font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: inherit;
+    width: 100%; border: none; border-radius: 14px; padding: 14px; font-size: 17px;
+    font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: inherit; line-height: 1.25;
   }
   #snap { background: #34495e; color: #fff; }
+  #nativeCam { background: #2c7be5; color: #fff; display: none; }
   #retake { background: #7f8c8d; color: #fff; display: none; }
-  #gps { font-size: 14px; text-align: center; padding: 10px; border-radius: 12px;
-    background: #fff; margin-bottom: 12px; }
+  .small { padding: 10px; font-size: 14px; background: #fff; color: #333; border: 1px solid #ccc; }
+  .checks { background: #fff; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+  .checks div { padding: 3px 0; }
   .ok { color: #27ae60; } .bad { color: #c0392b; } .wait { color: #e67e22; }
   .actions { display: flex; gap: 10px; }
   .actions button { margin-bottom: 0; }
   #btnIn { background: #27ae60; color: #fff; }
   #btnOut { background: #c0392b; color: #fff; }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  #status { margin-top: 14px; text-align: center; font-size: 15px; min-height: 24px; font-weight: 600; }
+  #status { margin-top: 14px; text-align: center; font-size: 15px; min-height: 24px; font-weight: 600; line-height: 1.45; }
   .hint { font-size: 12px; color: #888; text-align: center; margin-top: 4px; }
+  .mm { display: block; font-family: "Noto Sans Myanmar", sans-serif; font-weight: 500; font-size: 12px; opacity: .85; margin-top: 2px; }
+  #fileIn { display: none; }
 </style>
 </head>
 <body>
-  <h1>⏱️ ลงเวลาทำงาน</h1>
+  <h1>⏱️ ลงเวลาทำงาน<span class="mm">ဝင်/ထွက် အချိန်မှတ်</span></h1>
   <div id="who">กำลังโหลด…</div>
 
   <div class="cam-wrap">
     <video id="cam" autoplay playsinline muted></video>
     <img id="preview" alt="selfie preview">
+    <div id="camMsg"></div>
     <div class="clock" id="clock">--:--</div>
   </div>
 
-  <button id="snap">📸 ถ่ายเซลฟี่</button>
-  <button id="retake">↺ ถ่ายใหม่</button>
+  <button id="snap">📸 ถ่ายเซลฟี่<span class="mm">ဆယ်လ်ဖီ ရိုက်ပါ</span></button>
+  <button id="nativeCam">📷 เปิดกล้องมือถือ<span class="mm">ဖုန်းကင်မရာ ဖွင့်ပါ</span></button>
+  <button id="retake">↺ ถ่ายใหม่<span class="mm">ပြန်ရိုက်ပါ</span></button>
+  <input type="file" id="fileIn" accept="image/*" capture="user">
 
-  <div id="gps" class="wait">📍 กำลังหาตำแหน่ง…</div>
+  <div class="checks">
+    <div id="ckWho" class="wait">⏳ บัญชี LINE — กำลังโหลด</div>
+    <div id="ckPhoto" class="wait">⏳ เซลฟี่ — ยังไม่ได้ถ่าย</div>
+    <div id="ckGps" class="wait">⏳ ตำแหน่ง GPS — กำลังหา…</div>
+  </div>
+  <button id="gpsRetry" class="small" style="display:none">🔄 หาตำแหน่งใหม่<span class="mm">တည်နေရာ ပြန်ရှာပါ</span></button>
 
   <div class="actions">
-    <button id="btnIn" disabled>เข้างาน</button>
-    <button id="btnOut" disabled>เลิกงาน</button>
+    <button id="btnIn" disabled>เข้างาน<span class="mm">ဝင်</span></button>
+    <button id="btnOut" disabled>เลิกงาน<span class="mm">ထွက်</span></button>
   </div>
 
   <div id="status"></div>
-  <div class="hint">ถ่ายเซลฟี่สด + เปิด GPS แล้วกดเข้า/เลิกงาน</div>
+  <div class="hint">ถ่ายเซลฟี่ + เปิด GPS ให้ครบ 3 ข้อ ✅ แล้วกดเข้า/เลิกงาน</div>
 
 <canvas id="canvas" hidden></canvas>
 <script>
-/* ===== ตั้งค่า — เติม 2 ค่านี้ทีหลัง =====
-   LIFF_ID    : ได้จาก Step 3 (สร้าง LIFF app ใน LINE Developers)
-   WEBHOOK_URL: ได้จาก Step 4 (n8n webhook ที่รับข้อมูลลงเวลา)            */
 const CONFIG = {
-  LIFF_ID: "2010363505-SKKkDoTf",                          // ✅ Step 3
-  WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/clockin"  // ✅ Step 4 (n8n)
+  LIFF_ID: "2010363505-SKKkDoTf",
+  WEBHOOK_URL: "https://sittan.app.n8n.cloud/webhook/clockin"
 };
 
-let state = { userId: "", displayName: "", photo: "", lat: null, lng: null, acc: null };
+let state = { userId: "", displayName: "", photo: "", lat: null, lng: null, acc: null, sending: false };
 
 const $ = id => document.getElementById(id);
 const video = $("cam"), preview = $("preview"), canvas = $("canvas");
+const mm = s => '<span class="mm">' + s + '</span>';
+function setCheck(id, cls, html){ $(id).className = cls; $(id).innerHTML = html; }
 
-/* นาฬิกามุมรูป */
 setInterval(() => {
-  const d = new Date();
-  $("clock").textContent = d.toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+  $("clock").textContent = new Date().toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
 }, 1000);
 
-/* ---- 1) รู้ว่าใคร (LINE LIFF) ---- */
+/* ---- 1) รู้ว่าใคร (LINE LIFF) — ต้องได้ userId ก่อนถึงจะกดส่งได้ ---- */
 async function initWho() {
-  if (!CONFIG.LIFF_ID) { $("who").innerHTML = "🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId = "TEST"; return; }
+  if (!CONFIG.LIFF_ID) { $("who").innerHTML = "🧪 โหมดทดสอบ (ยังไม่ตั้ง LIFF)"; state.userId = "TEST"; setCheck("ckWho","ok","✅ บัญชี LINE (ทดสอบ)"); refreshButtons(); return; }
   try {
     await liff.init({ liffId: CONFIG.LIFF_ID });
-    if (!liff.isLoggedIn()) { liff.login(); return; }
-    const p = await liff.getProfile();
-    state.userId = p.userId; state.displayName = p.displayName;
-    $("who").innerHTML = "สวัสดี <b>" + p.displayName + "</b>";
   } catch (e) {
-    $("who").innerHTML = "🧪 โหมดทดสอบ (เปิดนอก LINE)"; state.userId = "TEST";
+    whoFailed("เปิดหน้านี้ผ่านปุ่มในแชท LINE เท่านั้น"); return;
   }
+  if (!liff.isLoggedIn()) { setCheck("ckWho","wait","⏳ บัญชี LINE — กำลังเข้าสู่ระบบ…"); liff.login(); return; }
+  for (let i = 0; i < 3 && !state.userId; i++) {
+    try {
+      const p = await liff.getProfile();
+      if (p && p.userId) { state.userId = p.userId; state.displayName = p.displayName || ""; }
+    } catch (e) { await new Promise(r => setTimeout(r, 800)); }
+  }
+  if (!state.userId) {
+    try { const c = liff.getContext(); if (c && c.userId) state.userId = c.userId; } catch (e) {}
+  }
+  if (!state.userId) {
+    try { const t = liff.getDecodedIDToken(); if (t && t.sub) { state.userId = t.sub; state.displayName = t.name || ""; } } catch (e) {}
+  }
+  if (!state.userId) { whoFailed("อ่านบัญชี LINE ไม่ได้ — ปิดหน้านี้แล้วกดปุ่มลงเวลาใหม่"); return; }
+  $("who").innerHTML = "สวัสดี <b>" + (state.displayName || "") + "</b>";
+  setCheck("ckWho","ok","✅ บัญชี LINE");
+  refreshButtons();
+}
+function whoFailed(msg) {
+  $("who").innerHTML = '<span class="bad">❌ ' + msg + mm("LINE အကောင့် မဖတ်နိုင်ပါ — ပိတ်ပြီး ပြန်ဖွင့်ပါ") + '</span>';
+  setCheck("ckWho","bad","❌ บัญชี LINE — ปิดแล้วเปิดใหม่");
+  refreshButtons();
 }
 
-/* ---- 2) กล้องสด (ถ่ายสดเท่านั้น ไม่มีอัปโหลดไฟล์) ---- */
+/* ---- 2) กล้อง: กล้องสดในหน้าเว็บ — ถ้าเปิดไม่ได้ใช้กล้องมือถือแทน ---- */
+function showNativeFallback(msg) {
+  video.style.display = "none";
+  $("camMsg").style.display = "flex";
+  $("camMsg").innerHTML = msg + mm("အောက်က ခလုတ်ကိုနှိပ်ပြီး ဖုန်းကင်မရာနဲ့ ရိုက်ပါ");
+  $("snap").style.display = "none";
+  $("nativeCam").style.display = "block";
+}
 async function initCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 720 } }, audio: false
-    });
-    video.srcObject = stream;
-  } catch (e) {
-    $("status").innerHTML = '<span class="bad">❌ เปิดกล้องไม่ได้ — กดอนุญาตกล้อง</span>';
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showNativeFallback("มือถือเครื่องนี้เปิดกล้องในหน้านี้ไม่ได้<br>กดปุ่ม 📷 ด้านล่างเพื่อถ่ายด้วยกล้องมือถือ"); return;
   }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 } }, audio: false });
+    video.srcObject = stream;
+    try { await video.play(); } catch (e) {}
+  } catch (e) {
+    showNativeFallback("เปิดกล้องไม่ได้ (อาจยังไม่ได้กดอนุญาตกล้อง)<br>กดปุ่ม 📷 ด้านล่างเพื่อถ่ายด้วยกล้องมือถือ");
+  }
+}
+/* วาดภาพลง canvas แบบครอปกลาง 3:4 (ไม่บีบภาพ) แล้วบีบเป็น jpeg */
+function drawCover(src, sw, sh) {
+  const w = 540, h = 720;
+  canvas.width = w; canvas.height = h;
+  const scale = Math.max(w / sw, h / sh);
+  const dw = sw * scale, dh = sh * scale;
+  canvas.getContext("2d").drawImage(src, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  return canvas.toDataURL("image/jpeg", 0.7);
+}
+function setPhoto(dataUrl) {
+  state.photo = dataUrl;
+  preview.src = dataUrl; preview.style.display = "block";
+  video.style.display = "none"; $("camMsg").style.display = "none";
+  $("snap").style.display = "none"; $("nativeCam").style.display = "none"; $("retake").style.display = "block";
+  setCheck("ckPhoto","ok","✅ เซลฟี่");
+  refreshButtons();
 }
 $("snap").onclick = () => {
-  const w = 540, h = w * 4/3;
-  canvas.width = w; canvas.height = h;
-  canvas.getContext("2d").drawImage(video, 0, 0, w, h);
-  state.photo = canvas.toDataURL("image/jpeg", 0.7);
-  preview.src = state.photo; preview.style.display = "block"; video.style.display = "none";
-  $("snap").style.display = "none"; $("retake").style.display = "block";
-  refreshButtons();
+  if (!video.srcObject || video.readyState < 2 || !video.videoWidth) {
+    $("status").innerHTML = '<span class="wait">⏳ กล้องยังไม่พร้อม รอ 1-2 วินาทีแล้วกดใหม่' + mm("ကင်မရာ အဆင်သင့်မဖြစ်သေး — ခဏစောင့်ပြီး ပြန်နှိပ်ပါ") + '</span>';
+    return;
+  }
+  $("status").innerHTML = "";
+  setPhoto(drawCover(video, video.videoWidth, video.videoHeight));
+};
+$("nativeCam").onclick = () => $("fileIn").click();
+$("fileIn").onchange = () => {
+  const f = $("fileIn").files && $("fileIn").files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => { setPhoto(drawCover(img, img.naturalWidth, img.naturalHeight)); URL.revokeObjectURL(img.src); };
+  img.onerror = () => { $("status").innerHTML = '<span class="bad">❌ อ่านรูปไม่ได้ ลองถ่ายใหม่' + mm("ဓာတ်ပုံ မဖတ်နိုင်ပါ — ပြန်ရိုက်ပါ") + '</span>'; };
+  img.src = URL.createObjectURL(f);
+  $("fileIn").value = "";
 };
 $("retake").onclick = () => {
-  state.photo = ""; preview.style.display = "none"; video.style.display = "block";
-  $("snap").style.display = "block"; $("retake").style.display = "none";
+  state.photo = ""; preview.style.display = "none"; $("retake").style.display = "none";
+  if (video.srcObject) { video.style.display = "block"; $("snap").style.display = "block"; }
+  else { $("camMsg").style.display = "flex"; $("nativeCam").style.display = "block"; }
+  setCheck("ckPhoto","wait","⏳ เซลฟี่ — ยังไม่ได้ถ่าย");
   refreshButtons();
 };
 
-/* ---- 3) GPS ---- */
-function initGPS() {
-  if (!navigator.geolocation) { $("gps").className = "bad"; $("gps").textContent = "❌ อุปกรณ์ไม่รองรับ GPS"; return; }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      state.lat = pos.coords.latitude; state.lng = pos.coords.longitude; state.acc = Math.round(pos.coords.accuracy);
-      $("gps").className = "ok";
-      $("gps").textContent = `📍 ได้ตำแหน่งแล้ว (±${state.acc} ม.)`;
-      refreshButtons();
-    },
-    err => { $("gps").className = "bad"; $("gps").textContent = "❌ หาตำแหน่งไม่ได้ — กดอนุญาตตำแหน่ง"; },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
+/* ---- 3) GPS: ลองแบบแม่นยำก่อน ถ้าไม่ได้ (ในห้าง) ลองแบบปกติ + มีปุ่มลองใหม่ ---- */
+function gpsOk(pos) {
+  state.lat = pos.coords.latitude; state.lng = pos.coords.longitude; state.acc = Math.round(pos.coords.accuracy);
+  setCheck("ckGps","ok","✅ ตำแหน่ง GPS (±" + state.acc + " ม.)");
+  $("gpsRetry").style.display = "none";
+  refreshButtons();
 }
+function gpsFail(err) {
+  const denied = err && err.code === 1;
+  setCheck("ckGps","bad", denied
+    ? "❌ ตำแหน่ง GPS — ยังไม่อนุญาต: เปิด Location ในมือถือ + อนุญาตให้ LINE ใช้ตำแหน่ง" + mm("Location ဖွင့်ပြီး LINE ကို ခွင့်ပြုပါ")
+    : "❌ ตำแหน่ง GPS — หาไม่เจอ: เดินใกล้ประตู/หน้าต่างแล้วกดหาใหม่" + mm("တည်နေရာ မတွေ့ပါ — ပြန်ရှာပါ"));
+  $("gpsRetry").style.display = "block";
+}
+function initGPS() {
+  if (!navigator.geolocation) { setCheck("ckGps","bad","❌ อุปกรณ์ไม่รองรับ GPS"); return; }
+  setCheck("ckGps","wait","⏳ ตำแหน่ง GPS — กำลังหา…");
+  $("gpsRetry").style.display = "none";
+  navigator.geolocation.getCurrentPosition(gpsOk, err => {
+    if (err && err.code === 1) { gpsFail(err); return; }
+    navigator.geolocation.getCurrentPosition(gpsOk, gpsFail, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+}
+$("gpsRetry").onclick = initGPS;
 
-/* ---- เปิด/ปิดปุ่ม เข้า-ออก เมื่อมีรูป+GPS ครบ ---- */
+/* ---- เปิดปุ่มเมื่อครบ 3 ข้อ ---- */
 function refreshButtons() {
-  const ready = !!state.photo && state.lat !== null;
+  const ready = !!state.userId && !!state.photo && state.lat !== null && !state.sending;
   $("btnIn").disabled = !ready; $("btnOut").disabled = !ready;
 }
 
 /* ---- 4) ส่งข้อมูลลงเวลา ---- */
 async function submit(type) {
-  $("btnIn").disabled = true; $("btnOut").disabled = true;
-  $("status").innerHTML = '<span class="wait">⏳ กำลังบันทึก…</span>';
+  if (state.sending) return;
+  state.sending = true; refreshButtons();
+  $("status").innerHTML = '<span class="wait">⏳ กำลังบันทึก… (อาจใช้เวลา 10-20 วินาที)' + mm("သိမ်းနေသည်…") + '</span>';
   const payload = {
     userId: state.userId, displayName: state.displayName,
-    type: type,                              // "in" = เข้างาน, "out" = เลิกงาน
-    photo: state.photo,                      // base64 jpeg (เซลฟี่สด)
+    type: type,
+    photo: state.photo,
     lat: state.lat, lng: state.lng, accuracy: state.acc,
     clientTime: new Date().toISOString()
   };
-  if (!CONFIG.WEBHOOK_URL) {
-    $("status").innerHTML = '<span class="wait">🧪 โหมดทดสอบ: ยังไม่ตั้ง webhook<br>ข้อมูลพร้อมส่งแล้ว (ดู console)</span>';
-    console.log("CLOCK PAYLOAD:", payload);
-    return;
-  }
+  const ctrl = window.AbortController ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 45000) : null;
   try {
     const res = await fetch(CONFIG.WEBHOOK_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      signal: ctrl ? ctrl.signal : undefined
     });
+    if (timer) clearTimeout(timer);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json().catch(() => ({}));
-    if (data.duplicate) {
-      $("status").innerHTML = '<span class="wait">⚠️ ' + (data.message || 'คุณลงเวลาไปแล้ววันนี้') + '</span>';
-    } else {
-      $("status").innerHTML = '<span class="ok">✅ บันทึก' + (type==="in"?"เข้างาน":"เลิกงาน") + 'แล้ว!</span>';
+    if (data.ok === false) {
+      $("status").innerHTML = '<span class="bad">❌ ' + (data.message || 'บันทึกไม่ได้ — แจ้งหัวหน้า') + '</span>';
+      state.sending = false; refreshButtons(); return;
     }
-    if (CONFIG.LIFF_ID && window.liff && liff.isInClient && liff.isInClient()) setTimeout(() => liff.closeWindow(), 1800);
+    if (data.duplicate) {
+      /* ลงไปแล้ว — ไม่ปิดหน้า เผื่อกดผิดปุ่ม จะได้กดอีกปุ่มได้ */
+      $("status").innerHTML = '<span class="wait">⚠️ ' + (data.message || 'คุณลงเวลาไปแล้ววันนี้') + mm("ဒီနေ့ မှတ်ပြီးသားပါ") + '</span>';
+      state.sending = false; refreshButtons(); return;
+    }
+    $("status").innerHTML = '<span class="ok">✅ บันทึก' + (type==="in"?"เข้างาน":"เลิกงาน") + 'แล้ว!' + mm("သိမ်းပြီးပါပြီ") + '</span>';
+    if (window.liff && liff.isInClient && liff.isInClient()) setTimeout(() => liff.closeWindow(), 1800);
   } catch (e) {
-    $("status").innerHTML = '<span class="bad">❌ ส่งไม่สำเร็จ ลองใหม่</span>';
-    refreshButtons();
+    if (timer) clearTimeout(timer);
+    const slow = e && e.name === "AbortError";
+    $("status").innerHTML = '<span class="bad">❌ ' + (slow ? 'เน็ตช้า/ระบบไม่ตอบ' : 'ส่งไม่สำเร็จ') + ' — กดใหม่อีกครั้ง' + mm("မပို့နိုင်ပါ — ပြန်နှိပ်ပါ") + '</span>';
+    state.sending = false; refreshButtons();
   }
 }
 $("btnIn").onclick = () => submit("in");
